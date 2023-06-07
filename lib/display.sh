@@ -15,6 +15,16 @@ display_error () {
   done
 }
 
+display_message () {
+  local i
+
+  text=("${(@f)$(printf "%s" "${1}" | fold -sw 70)}")
+  for i in "${text[@]}"
+  do
+    printf "${tty_cyan}${i}${tty_reset}\n"
+  done
+}
+
 display_prompt () {
   printf "${tty_grey}${1} ${tty_reset}"
 }
