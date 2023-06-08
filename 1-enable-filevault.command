@@ -22,8 +22,16 @@ main () {
 
   prepare_display_environment
 
+  [[ $EXTREME -eq 0 ]] && ohai 'Using extreme level security.' || { ohai 'High level security is not yet implemented.'; exit 0 }
+
   # Make sure current user is admin
   check_run_command_as_admin
+
+  # Invalidate sudo timestamp before exiting (if it wasn't active before).
+  if [[ -x /usr/bin/sudo ]] && ! /usr/bin/sudo -n -v 2>/dev/null
+  then
+    trap '/usr/bin/sudo -k' EXIT
+  fi
 
   ohai 'Checking for `sudo` access (which may request your password)...'
   have_sudo_access
@@ -38,11 +46,34 @@ main () {
   echo
 }
 
-# Invalidate sudo timestamp before exiting (if it wasn't active before).
-if [[ -x /usr/bin/sudo ]] && ! /usr/bin/sudo -n -v 2>/dev/null
-then
-  trap '/usr/bin/sudo -k' EXIT
-fi
+EXTREME=0
+
+usage=(
+  "usage:"
+  " $(basename ${(%):-%x}) [-h|--help]"
+  " $(basename ${(%):-%x}) [--extreme]"
+  " $(basename ${(%):-%x}) [--high]"
+)
+
+opterr() { echo >&2 "$(basename ${(%):-%x}): Unknown option '$1'" }
+
+case $# in
+  0)
+    EXTREME=0
+    ;;
+  1)
+    case $1 in
+      -h|--help)  printf "%s\n" $usage && exit 0 ;;
+      --extreme)  EXTREME=0                      ;;
+      --high)     EXTREME=1                      ;;
+      -*)         opterr $1 && exit 1            ;;
+    esac
+    ;;
+  *)
+    printf "%s\n" "$(basename ${(%):-%x}): too many arguments"
+    exit 1
+    ;;
+esac
 
 main "$@"
 
