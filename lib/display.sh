@@ -43,7 +43,17 @@ display_warning () {
 }
 
 ohai () {
-  printf "${tty_blue}==>${tty_bold} %s${tty_reset}\n" "$(shell_join "$@")"
+  local i
+
+  text=("${(@f)$(printf "%s" "$(shell_join "$@")" | fold -sw 70)}")
+  printf "${tty_blue}==>${tty_bold} %s${tty_reset}\n" "${text[1]}"
+
+  text=("${text[@]:1}")
+  for i in "${text[@]}"
+  do
+    #printf "${tty_blue}==>${tty_bold} %s${tty_reset}\n" "${i}"
+    printf "  ${tty_bold}  %s${tty_reset}\n" "${i}"
+  done
 }
 
 prepare_display_environment () {
