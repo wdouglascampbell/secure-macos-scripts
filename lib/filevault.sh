@@ -2,7 +2,7 @@
 # shebang for syntax detection, not a command
 # do *not* set executable!
 
-configure_filevault () {
+configure_filevault_extreme () {
   local filevault_user
   local filevault_password
   local filevault_state
@@ -40,6 +40,19 @@ configure_filevault () {
     ;;
 
   esac
+}
+
+get_filevault_account_list () {
+  local _fv_enabled_account_list=$1
+  local tmp
+
+  tmp=$(
+    execute_sudo "fdesetup" "list" | \
+    awk -F ',' '{ printf "%s ", $1 }'
+  )
+  tmp=(${(@s: :)tmp})
+
+  set -A $_fv_enabled_account_list ${(kv)tmp}
 }
 
 get_filevault_state () {

@@ -29,6 +29,19 @@ display_prompt () {
   printf "${tty_grey}${1} ${tty_reset}"
 }
 
+display_warning () {
+  local i
+
+  text=("${(@f)$(printf "%s" "${1}" | fold -sw 70)}")
+  printf "${tty_yellow}WARNING: ${text[1]}${tty_reset}\n"
+
+  text=("${text[@]:1}")
+  for i in "${text[@]}"
+  do
+    printf "${tty_yellow}         ${i}${tty_reset}\n"
+  done
+}
+
 ohai () {
   printf "${tty_blue}==>${tty_bold} %s${tty_reset}\n" "$(shell_join "$@")"
 }

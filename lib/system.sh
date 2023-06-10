@@ -47,12 +47,33 @@ get_account_username () {
   )}
 }
 
+get_local_account_list () {
+  local _local_account_list=$1
+  local tmp
+
+  tmp=$(
+    dscl . list /Users UniqueID | \
+    awk '$2 > 500 && $2 < 1000 { printf "%s ", $1 }'
+  )
+  tmp=(${(@s: :)tmp})
+
+  set -A $_local_account_list ${(kv)tmp}
+}
+
 hide_account () {
   execute_sudo "dscl" "." "-create" "/Users/$1" "IsHidden" "1"
 }
 
 hide_others_option_from_login_screen () {
   execute_sudo "defaults" "write" "/Library/Preferences/com.apple.loginwindow" "SHOWOTHERUSERS_MANAGED" "-bool" "FALSE"
+}
+
+is_account_admin () {
+  dsmemberutil checkmembership -U "$1" -G "admin" | grep "is a member" >/dev/null
+}
+
+is_account_secure_token_enabled () {
+  sysadminctl -secureTokenStatus $1 2>&1 | grep "ENABLED" >/dev/null
 }
 
 is_account_exist () {
@@ -65,6 +86,9 @@ is_user_password_valid () {
 
   display_error "Password Invalid!"
   return 1
+}
+
+remove_account () {
 }
 
 remove_user_from_admin_group () {

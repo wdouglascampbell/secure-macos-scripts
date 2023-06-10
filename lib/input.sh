@@ -25,6 +25,40 @@ ask_yes_no () {
   return $result
 }
 
+check_password_complexity () {
+  local character_type_count=0
+  local min_length
+
+  if [[ $1 =~ '^[[:space:]]+|[[:space:]]+$' ]]; then
+    display_error "Password must not begin or end with whitespace."
+    return 1
+  fi
+
+  [[ $EXTREME -eq 0 ]] && min_length=8 || min_length=16
+  if [[ ${#1} -lt $min_length ]]; then
+    display_error "Password must be $min_length characters in length."
+    return 1
+  fi
+
+  [[ $EXTREME -eq 0 ]] && return 0
+
+  [[ $1 =~ '[[:upper:]]' ]] && (( character_type_count++ ))
+  [[ $1 =~ '[[:lower:]]' ]] && (( character_type_count++ ))
+  [[ $1 =~ '[[:digit:]]' ]] && (( character_type_count++ ))
+  [[ $1 =~ '[^[:upper:][:lower:][:digit:]]' ]] && (( character_type_count++ ))
+  [[ $character_type_count -ge 3 ]] && return 0
+  
+  display_error "Password does not meet complexity requirements."
+  printf "\n"
+  printf "%7s${tty_red}%s${tty_reset}\n" "" "It must contain characters from 3 of the following 4 categoies:"
+  printf "%7s${tty_red}%s${tty_reset}\n" "" " + Uppercase letters"
+  printf "%7s${tty_red}%s${tty_reset}\n" "" " + Lowercase letters"
+  printf "%7s${tty_red}%s${tty_reset}\n" "" " + Numbers"
+  printf "%7s${tty_red}%s${tty_reset}\n" "" " + Special characters like ~\`\!@#\$ etc"
+
+  return 1
+}
+
 get_input_from_user () {
   local PROMPT=$1
   local RESPONSE=$2
@@ -125,7 +159,7 @@ get_account_password () {
     *)
       case "$account_type" in
         "admin" | "user")
-          check_pw_func='has_no_leading_trailing_whitespace'
+          check_pw_func='check_password_complexity'
           ;;
         "preboot")
           check_pw_func='check_preboot_password_complexity'
@@ -191,7 +225,7 @@ select_with_default () {
     printf %s "${PS3-#? }" >&2 # Print the prompt string to stderr, as `select` does.
     read -r index
     # Make sure that the input is either empty or that a valid index was entered.
-    [[ -z $index ]] && : ${(P)_selection::=$defaultitem} && break
+    [[ -n $defaultitem ]] && [[ -z $index ]] && : ${(P)_selection::=$defaultitem} && break
     (( index >= 1 && index <= ${#${(P)_itemlist}} )) 2>/dev/null || { echo "Invalid selection. Please try again." >&2; continue; }
     : ${(P)_selection::="${(P)_itemlist: $(( index - 1 )):1}"}
     break
