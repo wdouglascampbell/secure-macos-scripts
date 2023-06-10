@@ -6,7 +6,7 @@ ask_yes_no () {
   local result
 
   while true; do
-    display_prompt "$1"; read yn
+    display_prompt "$1"; read -k1 yn
     case $yn in
       [Yy] )
         result=0
@@ -17,6 +17,7 @@ ask_yes_no () {
         break
         ;;
       * )
+        printf '\n'
         display_error "Invalid response. Please try again."
         ;;
     esac
