@@ -2,12 +2,30 @@
 # shebang for syntax detection, not a command
 # do *not* set executable!
 
+check_for_security_level_downgrade_attempt () {
+  if [[ $EXTREME -eq 1 ]]; then
+    # HIGH security -- check for preboot account existence
+    if is_account_exist "preboot"; then
+      display_warning 'The selected security level is HIGH but it appears this computer may have been configured at least partially at the EXTREME security level. We recommend that you not lower the security protection of this device and instead retain the security level at EXTREME.'
+      ask_yes_no "Should the security level be retained at EXTREME? (y/n)"
+      if [[ $? -eq 0 ]]; then
+        EXTREME=0
+        printf "\n"
+        ohai 'Updated Security Level: EXTREME'
+      else
+        printf "\n"
+      fi
+    fi
+  fi
+}
+
 configure_filevault_extreme () {
-  local filevault_user
-  local filevault_password
+  local filevault_user=$1
   local filevault_state
 
   get_filevault_state filevault_state
+
+  ohai 'Configuring FileVault'
 
   case "$filevault_state" in
 
@@ -15,23 +33,22 @@ configure_filevault_extreme () {
     ohai "FileVaule is off. Proceeding with encryption..."
     ohai "Click 'OK' button in response to the dialog that appears stating that"
     ohai "'fdesetup would like to enable FileVault.'"
-    enable_filevault "$1"
+    enable_filevault_extreme
     ;;
 
   "decrypting")
-    ohai 'FileVault is currently decrypting the drive. Re-run this script once the drive has been fully decrypted in order to re-enable encryption.'
+    abort 'FileVault is currently decrypting the drive. Re-run this script once the drive has been fully decrypted in order to re-enable encryption.'
     ;;
 
   "on")
     ohai 'FileVault is on.' 
 
     # ensure preboot account can unlock FileVault
-    if [[ $(execute_sudo "fdesetup" "list" | grep -c '^preboot,') -eq 0 ]]; then
+    if ! (($FILEVAULT_ENABLED_ACCOUNTS[(Ie)preboot])); then
       ohai '`preboot` account does not have permissions to unlock FileVault.'
-      get_account_with_filevault_permissions filevault_user filevault_password
 
       enable_account "preboot"
-      grant_account_filevault_access "preboot" "$1" "$filevault_user" "$filevault_password"
+      grant_account_filevault_access "preboot" "${PASSWORDS[preboot]}" "$filevault_user" "${PASSWORDS[$filevault_user]}"
       disable_account "preboot"
     fi
 
@@ -42,21 +59,48 @@ configure_filevault_extreme () {
   esac
 }
 
-get_filevault_account_list () {
-  local _fv_enabled_account_list=$1
-  local tmp
+disable_filevault () {
+  local password
 
-  tmp=$(
+  quote_string_for_use_within_expect_tcl_script_double_quotes "$2" password
+
+  execute_sudo "expect" >/dev/null << EOF
+    spawn fdesetup disable -user $1
+    expect {
+      -re "Enter the password for (the )?user '$1':" {
+        send "$password\r"
+      }
+      default {
+        exit 3
+      }
+    }
+    expect {
+      "Error: User authentication failed." {
+        exit 1
+      }
+      "FileVault has been disabled." {
+        exit 0
+      }
+    }
+    exit 0
+EOF
+}
+
+get_filevault_account_list () {
+  ohai 'Getting list of accounts with FileVault access.'
+
+  FILEVAULT_ENABLED_ACCOUNTS=$(
     execute_sudo "fdesetup" "list" | \
     awk -F ',' '{ printf "%s ", $1 }'
   )
-  tmp=(${(@s: :)tmp})
 
-  set -A $_fv_enabled_account_list ${(kv)tmp}
+  FILEVAULT_ENABLED_ACCOUNTS=(${(@s: :)FILEVAULT_ENABLED_ACCOUNTS})
 }
 
 get_filevault_state () {
   local _state=$1
+
+  ohai 'Getting FileVault state.'
 
   if [[ $(fdesetup status | grep "FileVault" | grep "On" | wc -l) -eq 1 ]]; then
     if [[ $(fdesetup status | grep "^Decryption in progress" | wc -l) -eq 1 ]]; then
@@ -70,6 +114,30 @@ get_filevault_state () {
 }
 
 enable_filevault () {
+  add_user_to_admin_group "$1"
+  encrypt_using_fdesetup_with_expect "$1" "${PASSWORDS[$1]}"
+  (($ADMINS[(Ie)$1])) && remove_user_from_admin_group "$1"
+}
+
+enable_filevault_access_for_all_accounts () {
+  typeset username
+
+  ohai 'Enablng FileVault access for all accounts.'
+
+  for username in "${LOGIN_ACCOUNTS[@]}"
+  do
+    [[ "$username" == "preboot" ]] && continue
+
+    if ! (($FILEVAULT_ENABLED_ACCOUNTS[(Ie)$username])); then
+      ohai 'Granting FileVault access for account, `'$username'`'
+      [[ "$1" == "preboot" ]] && enable_account "preboot"
+      grant_account_filevault_access "$username" "${PASSWORDS[$username]}" "$1" "${PASSWORDS[$1]}"
+      [[ "$1" == "preboot" ]] && disable_account "preboot"
+    fi
+  done
+}
+
+enable_filevault_extreme () {
   enable_account "preboot"
 
   # fdesetup complains when a non-admin account is used to enable FileVault
@@ -77,7 +145,7 @@ enable_filevault () {
   # to admin group.
   add_user_to_admin_group "preboot"
 
-  encrypt_using_fdesetup_with_expect "preboot" "$1"
+  encrypt_using_fdesetup_with_expect "preboot" "${PASSWORDS[preboot]}"
 
   hide_others_option_from_login_screen
 

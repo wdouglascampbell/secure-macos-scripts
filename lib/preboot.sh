@@ -21,77 +21,26 @@ check_preboot_password_complexity () {
 }
 
 configure_preboot_account () {
-  local _preboot_password=$1
-  local adminuser
-  local adminpass
-  local new_adminpass
-  local confirm_adminpass
-  local preboot_confirm
-  local new_preboot_password
+  local password
+
+  ohai 'Configuring Pre-Boot Authentication account.'            
 
   # check if preboot account exists
-  is_account_exist "preboot"
-  if [[ $? -eq 0 ]]; then
-    ohai '`preboot` account exists. Please verify password.'
-    get_account_password "preboot" $_preboot_password "verify"
-
-    check_preboot_password_complexity "${(P)_preboot_password}"
-    if [[ $? -ne 0 ]]; then
-      display_error 'The current `preboot` account password does not meet our requirements. It will need to be changed. Please enter a new password.'
-      get_password_and_confirm "preboot" new_preboot_password
-
-      printf "\n"
-      ohai "Changing preboot account password."
-      change_preboot_password "${(P)_preboot_password}" "$new_preboot_password"
-      : ${(P)_preboot_password::=$new_preboot_password}
-    fi
-
+  if [[ -n "${PASSWORDS[preboot]}" ]]; then
     # check if preboot account has a Secure Token
-    if [[ $(sysadminctl -secureTokenStatus preboot 2>&1 | grep "DISABLED" | wc -l) -eq 1 ]]; then
-      adminuser=$(logname)
-      printf "\n"
-      ohai 'Administrator credentials are required to give preboot account permissions to unlock disc encryption.'
-      ohai 'Please provide a password for the `'$adminuser'` account.'
-
-      get_account_password "admin" "$adminuser" adminpass "verify"
-      if [[ $adminpass =~ '^[[:space:]]+|[[:space:]]+$' ]]; then
-        display_error 'The password for `'$adminuser'` begins or ends with whitespace. It will need to be changed. Please enter a new password.'
-        get_password_and_confirm "admin" "$adminuser" new_adminpass
-
-        printf "\n"
-        ohai 'Changing `'$adminuser'` account password.'
-        change_user_password "$adminuser" "$adminpass" "$new_adminpass"
-        adminpass=$new_adminpass
-      fi
-
+    if ! (($SECURE_TOKEN_HOLDERS[(Ie)preboot])); then
       enable_account "preboot"
-      enable_secure_token_for_account "preboot" "${(P)_preboot_password}" "$adminuser" "$adminpass"
+      enable_secure_token_for_account "preboot" "${PASSWORDS[preboot]}" "$SCRIPT_USER" "${PASSWORDS[$SCRIPT_USER]}"
       disable_account "preboot"
     fi
   else
-    ohai 'A `preboot` account is required to configure whole disc encryption with preboot'
-    ohai 'authentication.'
+    ohai 'A `preboot` account is required to configure whole disc encryption with preboot authentication.'
     ohai 'Please provide a password for the `preboot` account.'
-    get_password_and_confirm "preboot" $_preboot_password
-  
-    adminuser=$(logname)
-    printf "\n"
-    ohai 'Administrator credentials are required to give preboot account permissions to unlock disc encryption.'
-    ohai 'Please provide a password for the `'$adminuser'` account.'
-    get_account_password "admin" "$adminuser" adminpass "verify"
-    if [[ $adminpass =~ '^[[:space:]]+|[[:space:]]+$' ]]; then
-      display_error 'The password for `'$adminuser'` begins or ends with whitespace. It will need to be changed. Please enter a new password.'
-      get_password_and_confirm "admin" "$adminuser" new_adminpass
-
-      printf "\n"
-      ohai 'Changing `'$adminuser'` account password.'
-      change_user_password "$adminuser" "$adminpass" "$new_adminpass"
-      adminpass=$new_adminpass
-    fi
-
+    get_password_and_confirm "preboot" password
     printf "\n"
     ohai 'Creating preboot account.'
-    create_preboot_account "${(P)_preboot_password}" "$adminuser" "$adminpass"
+    create_preboot_account "$password" "$SCRIPT_USER" "${PASSWORDS[$SCRIPT_USER]}"
+    PASSWORDS[preboot]=$password
   fi
 }
 

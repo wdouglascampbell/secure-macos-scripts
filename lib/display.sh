@@ -51,8 +51,20 @@ ohai () {
   text=("${text[@]:1}")
   for i in "${text[@]}"
   do
-    #printf "${tty_blue}==>${tty_bold} %s${tty_reset}\n" "${i}"
     printf "  ${tty_bold}  %s${tty_reset}\n" "${i}"
+  done
+}
+
+ohai_debug () {
+  typeset line
+
+  text=("${(@f)$(printf "%s" "$(shell_join "$@")" | fold -sw 70)}")
+  printf "${tty_purple}DEBUG: ${tty_bold}%s${tty_reset}\n" "${text[1]}"
+
+  text=("${text[@]:1}")
+  for line in "${text[@]}"
+  do
+    printf "       ${tty_bold}%s${tty_reset}\n" "$line"
   done
 }
 
@@ -78,6 +90,7 @@ prepare_display_environment () {
   tty_mkbold () { tty_escape "1;$1"; }
   tty_underline="$(tty_escape "4;39")"
   tty_blue="$(tty_mkbold 34)"
+  tty_purple="$(tty_mkbold 35)"
   tty_cyan="$(tty_mkbold 36)"
   tty_red="$(tty_mkbold 31)"
   tty_yellow="$(tty_mkbold 33)"

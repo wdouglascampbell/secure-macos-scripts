@@ -18,6 +18,12 @@ check_run_command_as_admin () {
   fi
 }
 
+check_run_command_as_root() {
+  [[ "${EUID:-${UID}}" == "0" ]] || return
+
+  abort "Don't run this as root!"
+}
+
 have_sudo_access () {
   if [[ ! -x "/usr/bin/sudo" ]]
   then

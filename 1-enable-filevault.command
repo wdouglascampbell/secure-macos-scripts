@@ -1,231 +1,487 @@
 #!/usr/bin/env zsh
 #
-# Ensures FileVault is enabled and only allows preboot account to perform
-# preboot authentication.
+# This script performs the following tasks:
+#  * Ensure all *enabled* login accounts have passwords that meet the
+#    complexity requirements for HIGH or EXTREME locations.
+#  * Ensure all login accounts have a SECURE TOKEN.
+#  * Ensure all login accounts for HIGH locations have access to
+#    unlock FileVault.
+#  * Ensure a preboot account exists and is configured as the only account that
+#    can unlock FileVault for EXTREME locations
+#  * Ensure a preboot account is configured to only unlock FileVault for
+#    EXTREME locations and is not used as a regular user account.
+#  * Provide a smooth transition between HIGH and EXTREME configurations
 #
 # Copyright (c) 2023 Doug Campbell. All rights reserved.
 
-PREBOOT_PASS_MIN_LENGTH=30
-
 SCRIPT_DIR=$( cd -- "$( dirname -- "${(%):-%x}" )" &> /dev/null && pwd )
 
+. "${SCRIPT_DIR}/lib/config.sh"
 . "${SCRIPT_DIR}/lib/display.sh"
 . "${SCRIPT_DIR}/lib/filevault.sh"
+. "${SCRIPT_DIR}/lib/globals.sh"
 . "${SCRIPT_DIR}/lib/input.sh"
 . "${SCRIPT_DIR}/lib/preboot.sh"
 . "${SCRIPT_DIR}/lib/quoting.sh"
 . "${SCRIPT_DIR}/lib/system.sh"
 . "${SCRIPT_DIR}/lib/util.sh"
 
+SCRIPT_USER=$(logname)
+
+# set DEBUG to 0 to enable debugging messages
+DEBUG=0
+
+# EXTREME=0 (run using EXTREME security level)
+# EXTREME=1 (run using HIGH security level)
+EXTREME=0
+
+check_command_line_options () {
+  usage=(
+    "usage:"
+    " $(basename ${(%):-%x}) [-h|--help]"
+    " $(basename ${(%):-%x}) [--extreme]"
+    " $(basename ${(%):-%x}) [--high]"
+  )
+  
+  opterr() { echo >&2 "$(basename ${(%):-%x}): Unknown option '$1'" }
+  
+  case $# in
+    0)
+      EXTREME=0
+      ;;
+    1)
+      case $1 in
+        -h|--help)  printf "%s\n" $usage && exit 0 ;;
+        --extreme)  EXTREME=0                      ;;
+        --high)     EXTREME=1                      ;;
+        -*)         opterr $1 && exit 1            ;;
+      esac
+      ;;
+    *)
+      printf "%s\n" "$(basename ${(%):-%x}): too many arguments"
+      exit 1
+      ;;
+  esac
+}
+
 main () {
-  local i
-  local preboot_password
-  local current_username current_password new_current_password
-  local selected_username selected_password new_selected_password
-  declare -a fv_account_list
-  declare -a local_account_list
-  declare -a secure_token_enabled_account_list
-  typeset -A passwords
+  local filevault_state
+  local fv_username
+  local main_username
+  local username password new_password
+  local secure_token_user_username
+  typeset -a other_choices_with_password
+  typeset -a other_choices_without_password
 
-  prepare_display_environment
+  get_login_account_list
+  get_info_all_login_accounts
+  get_filevault_account_list
+  get_passwords_for_remaining_login_accounts
+  get_filevault_state filevault_state
+  check_all_login_accounts_for_problem_passwords
 
-  [[ $EXTREME -eq 0 ]] && ohai 'Current Security Level: EXTREME' || ohai 'Current Security Level: HIGH'
+  if [[ "$filevault_state" == "on" ]]; then
+    ohai 'FileVault is Enabled.'
+    ohai 'Searching for account with a Secure Token and FileVault access.'
 
-  # Make sure current user is admin
-  check_run_command_as_admin
+    [[ $DEBUG -eq 0 ]] && ohai_debug 'Searching accounts with FileVault access for ones that also have a Secure Token and a known, good password.'
 
-  # Invalidate sudo timestamp before exiting (if it wasn't active before).
-  if [[ -x /usr/bin/sudo ]] && ! /usr/bin/sudo -n -v 2>/dev/null
-  then
-    trap '/usr/bin/sudo -k' EXIT
-  fi
+    unset username
+    for username in "${FILEVAULT_ENABLED_ACCOUNTS[@]}"; do
+      # if account does not have secure token, skip it
+      (($SECURE_TOKEN_HOLDERS[(Ie)$username])) || continue
 
-  ohai 'Checking for `sudo` access (which may request your password)...'
-  have_sudo_access
-  echo
+      # if account has a problem password, skip it
+      if (($ACCOUNTS_WITH_PROBLEM_PASSWORDS[(Ie)$username])); then
+        other_choices_with_password+=("$username")
+        continue
+      fi
 
-  is_account_exist "preboot"; PREBOOT_ACCOUNT_EXISTS=$?
+      # if account password has not been provided, skip it
+      if [[ -z "${PASSWORDS[$username]}" ]]; then
+        other_choices_without_password+=("$username") 
+        continue
+      fi
 
-  # HIGH security -- check for preboot account existence
-  if [[ $EXTREME -eq 1 ]]; then
-    if [[ $PREBOOT_ACCOUNT_EXISTS -eq 0 ]]; then
-      display_warning 'The selected security level is HIGH but it appears this computer may have been configured at least partially at the EXTREME security level. We recommend that you not lower the security protection of this device and instead retain the security level at EXTREME.'
-      ask_yes_no "Should the security level be retained at EXTREME? (y/n)"
-      if [[ $? -eq 0 ]]; then
-        EXTREME=0
+      main_username=$username
+      break
+    done
+    if [[ -z "$main_username" ]]; then
+      if [[ $DEBUG -eq 0 ]]; then
+        ohai_debug 'Search did not find an account matching search criteria.'
+        ohai_debug 'Searching accounts with FileVault access that have a known but problematic password for ones that also have a Secure Token.'
+      fi
+
+      unset username
+      for username in "${other_choices_with_password[@]}"; do
+        printf '\n'
+        printf "%s\n" 'The password provided for `'$username'` is correct but it contains leading or trailing'
+        printf "%s\n" 'spaces. It needs to be changed or some operations will be unsuccesful. In order for it'
+        printf "%s\n" 'to be used. Please provide a new password.'
+
+        if [[ $username == "preboot" ]]; then
+          get_password_and_confirm "preboot" new_password
+        else
+          get_password_and_confirm "admin" "$username" new_password
+        fi
+
         printf "\n"
-        ohai 'Updated Security Level: EXTREME'
+        ohai 'Changing `'$username'` account password.'
+        (($DISABLED_ACCOUNTS[(Ie)$username])) && enable_account "$username"
+        change_user_password "$username" "${PASSWORDS[$username]}" "$new_password"
+        [[ "$username" == "preboot" ]] && disable_account "preboot"
+        PASSWORDS[$username]=$new_password
+
+        # remove account from ACCOUNTS_WITH_PROBLEM_PASSWORDS
+        ACCOUNTS_WITH_PROBLEM_PASSWORDS=("${(@)ACCOUNTS_WITH_PROBLEM_PASSWORDS:#${username}}")
+
+        main_username=$username
+        break
+      done
+      if [[ -z "$main_username" ]]; then
+        if [[ $DEBUG -eq 0 ]]; then
+          ohai_debug 'Search did not find an account matching search criteria.'
+          ohai_debug 'Searching accounts with FileVault access where password is unknown for ones that also have a Secure Token.'
+        fi
+
+        if [[ ${#other_choices_without_password} -gt 0 ]]; then
+          printf "\n"
+          printf "%s\n" "The password for one of the following accounts is needed so that some of the operations"
+          printf "%s\n" "can complete successfully."
+
+          PS3="Select account: "
+          select_with_default other_choices_without_password "" username
+
+          printf "\n"
+          printf "%s\n" 'Please provide password for `'$username'`.'
+          if [[ $username == "preboot" ]]; then
+            get_account_password "preboot" password "verify"
+          else
+            get_account_password "admin" "$username" password "verify" 
+          fi
+    
+          if ! has_no_leading_trailing_whitespace "$password"; then
+            printf '\n'
+            printf "%s\n" 'The password provided for `'$username'` is correct but it contains leading or trailing'
+            printf "%s\n" 'spaces. It needs to be changed in order to proceed. Please provide a new password.'
+
+            if [[ $username == "preboot" ]]; then
+              get_password_and_confirm "preboot" new_password
+            else
+              get_password_and_confirm "admin" "$username" new_password
+            fi
+
+            printf "\n"
+            ohai 'Changing `'$username'` account password.'
+            (($DISABLED_ACCOUNTS[(Ie)$username])) && enable_account "$username"
+            change_user_password "$username" "${PASSWORDS[$username]}" "$new_password"
+            [[ "$username" == "preboot" ]] && disable_account "preboot"
+          fi
+
+          PASSWORDS[$username]=$new_password
+          main_username=$username
+        fi
+        if [[ -z "$main_username" ]]; then
+          if [[ $DEBUG -eq 0 ]]; then
+            ohai_debug 'Search did not find an account matching search criteria.'
+            ohai_debug 'Searching accounts with FileVault access for ones with a known, goood password.'
+          fi    
+
+          unset other_choices_without_password
+          unset username
+          for username in "${FILEVAULT_ENABLED_ACCOUNTS[@]}"; do
+            (($ACCOUNTS_WITH_PROBLEM_PASSWORDS[(Ie)$username)) && continue
+            if [[ -z "${PASSWORDS[$username]}" ]]; then
+              other_choices_without_password+=("$username")
+              continue
+            fi
+
+            fv_username=$username
+          done
+
+          if [[ -z "$fv_username" ]]; then
+            [[ $DEBUG -eq 0 ]] && ohai_debug 'Search did not find an account matching search criteria.'
+            if [[ ${#other_choices_without_password} -gt 0 ]]; then
+              if [[ ${#other_choices_without_password} -eq 1 ]]; then
+                [[ $DEBUG -eq 0 ]] && ohai_debug 'There is one account that has FileVault access but with no known password.'
+                printf "\n"
+                printf "%s\n" "The password for the following account is needed so that some of the operations can"
+                printf "%s\n" "complete successfully."
+              else
+                [[ $DEBUG -eq 0 ]] && ohai_debug 'There are multiple accounts that have FileVault access but with no known password.'
+                printf "\n"
+                printf "%s\n" "The password for one of the following accounts is needed so that some of the operations"
+                printf "%s\n" "can complete successfully."
+              fi
+
+              while true; do
+                if [[ ${#other_choices_without_password} -eq 1 ]]; then
+                  username=${other_choices_without_password[1]}
+                else
+                  PS3="Select account: "
+                  select_with_default other_choices_without_password "" username
+                fi
+
+                printf "\n"
+                printf "%s\n" 'Please provide password for `'$username'`.'
+                if [[ $username == "preboot" ]]; then
+                  get_account_password "preboot" password "verify"
+                else
+                  get_account_password "admin" "$username" password "verify" 
+                fi
+                PASSWORDS[$username]=$password
+
+                has_no_leading_trailing_whitespace "$password" && break
+                display_error 'Unfortunately this password while correct contains leading or trailing spaces.  Please select a different account to try.'
+                ACCOUNTS_WITH_PROBLEM_PASSWORDS+=("$username")
+                other_choices_without_password=("${(@)other_choices_without_password:#${username}}")
+                if [[ ${#other_choices_without_password} -eq 0 ]]; then
+                  display_error 'All of the accounts with FileVault access have a password with leading or trailing spaces but do not have a Secure Token so there is no way to change the password.'
+                  abort 'Oops. Unfortunately there is no way to resolve this issue in a non-destructive way.'
+                fi
+              done
+
+              fv_username=$username
+            else
+              abort 'Oops! No accounts have FileVault access. This should never happen.'
+            fi
+          fi
+
+          if [[ $DEBUG -eq 0 ]]; then
+            ohai_debug '`'$fv_username'` account has FileVault access and has been selected to administrate FileVault access.'
+            ohai_debug 'Searching accounts with a Secure Token for ones with a known, goood password.'
+          fi
+
+          unset other_choices_without_password
+          unset username
+          for username in "${SECURE_TOKEN_HOLDERS[@]}"; do
+            (($ACCOUNTS_WITH_PROBLEM_PASSWORDS[(Ie)$username])) && continue
+            if [[ -z "${PASSWORDS[$username]}" ]]; then
+              other_choices_without_password+=("$username")
+              continue
+            fi
+
+            secure_token_user_username=$username
+            break
+          done
+          if [[ -z "$secure_token_user_username" ]]; then
+            [[ $DEBUG -eq 0 ]] && ohai_debug 'Search did not find an account matching search criteria.'
+            if [[ ${#other_choices_without_password} -gt 0 ]]; then
+              if [[ ${#other_choices_without_password} -eq 1 ]]; then
+                [[ $DEBUG -eq 0 ]] && ohai_debug 'There is one account that has a Secure Token but with no known password.'
+                printf "\n"
+                printf "%s\n" "The password for the following account is needed so that some of the operations can"
+                printf "%s\n" "complete successfully."
+              else
+                [[ $DEBUG -eq 0 ]] && ohai_debug 'There are multiple accounts that have a Secure Token but with no known password.'
+                printf "\n"
+                printf "%s\n" "The password for one of the following accounts is needed so that some of the operations"
+                printf "%s\n" "can complete successfully."
+              fi
+
+              while true; do
+                if [[ ${#other_choices_without_password} -eq 1 ]]; then
+                  username=${other_choices_without_password[1]}
+                else
+                  PS3="Select account: "
+                  select_with_default other_choices_without_password "" username
+                fi
+
+                printf "\n"
+                printf "%s\n" 'Please provide password for `'$username'`.'
+                if [[ $username == "preboot" ]]; then
+                  get_account_password "preboot" password "verify"
+                else
+                  get_account_password "admin" "$username" password "verify" 
+                fi
+                PASSWORDS[$username]=$password
+
+                has_no_leading_trailing_whitespace "$password" && break
+                display_error 'Unfortunately this password while correct contains leading or trailing spaces.  Please select a different account to try.'
+                ACCOUNTS_WITH_PROBLEM_PASSWORDS+=("$username")
+                other_choices_without_password=("${(@)other_choices_without_password:#${username}}")
+                if [[ ${#other_choices_without_password} -eq 0 ]]; then
+                  display_error 'All of the accounts with a Secure Token have a password with leading or trailing spaces but do not have FileVault access so there is no way to change the password.'
+                  abort 'Oops. Unfortunately there is no way to resolve this issue in a non-destructive way.'
+                fi
+              done
+
+              secure_token_user_username=$username
+            else
+              abort 'Oops! No accounts have a Secure Token.  This can happen in rare circumstances but unfortunately there is no way to resolve this issue in a non-destructive way.'
+            fi
+          fi
+
+          ohai 'Adding FileVault access to account with only Secure Token access.'
+          [[ $fv_username == "preboot" || $secure_token_user_username == "preboot" ]] && enable_account "preboot"
+          grant_account_filevault_access "$secure_token_user_username" "${PASSWORDS[$secure_token_user_username]}" "$fv_username" "${PASSWORDS[$fv_username]}"
+          [[ $fv_username == "preboot" || $secure_token_user_username == "preboot" ]] && disable_account "preboot"
+          
+          main_username=$secure_token_user_username
+        fi
+      fi
+    fi
+  else
+    ohai 'FileVault is Disabled.'
+    ohai 'Searching for account with a Secure Token and FileVault access.'
+
+    [[ $DEBUG -eq 0 ]] && ohai_debug 'Searching accounts with a Secure Token and FileVault access for ones with a known, good password.'
+    
+    unset other_choices_with_password
+    unset other_choices_without_password
+    unset username
+    for username in "${SECURE_TOKEN_HOLDERS[@]}"; do
+      # if account does not have secure token, skip it
+      (($SECURE_TOKEN_HOLDERS[(Ie)$username])) || continue
+
+      # if account has a problem password, skip it
+      if (($ACCOUNTS_WITH_PROBLEM_PASSWORDS[(Ie)$username])); then
+        other_choices_with_password+=("$username")
+        continue
+      fi
+
+      # if account password has not been provided, skip it
+      if [[ -z "${PASSWORDS[$username]}" ]]; then
+        other_choices_without_password+=("$username") 
+        continue
+      fi
+
+      main_username=$username
+      break
+    done
+    if [[ -z "$main_username" ]]; then
+      if [[ $DEBUG -eq 0 ]]; then
+        ohai_debug 'Search did not find an account matching search criteria.'
+        ohai_debug 'Checking if any accounts with a Secure Token and FileVault access have a problematic password to prompt user to change it.'
+      fi
+
+      unset username
+      for username in "${other_choices_with_password[@]}"; do
+        printf '\n'
+        printf "%s\n" 'The password provided for `'$username'` is correct but it contains leading or trailing'
+        printf "%s\n" 'spaces. It needs to be changed or some operations will be unsuccesful. In order for it'
+        printf "%s\n" 'to be used. Please provide a new password.'
+
+        if [[ $username == "preboot" ]]; then
+          get_password_and_confirm "preboot" new_password
+        else
+          get_password_and_confirm "admin" "$username" new_password
+        fi
+
+        printf "\n"
+        ohai 'Changing `'$username'` account password.'
+        (($DISABLED_ACCOUNTS[(Ie)$username])) && enable_account "$username"
+        change_user_password "$username" "${PASSWORDS[$username]}" "$new_password"
+        [[ "$username" == "preboot" ]] && disable_account "preboot"
+        PASSWORDS[$username]=$new_password
+
+        # remove account from ACCOUNTS_WITH_PROBLEM_PASSWORDS
+        ACCOUNTS_WITH_PROBLEM_PASSWORDS=("${(@)ACCOUNTS_WITH_PROBLEM_PASSWORDS:#${username}}")
+
+        main_username=$username
+        break
+      done
+
+      if [[ -z "$main_username" ]]; then
+        [[ $DEBUG -eq 0 ]] && ohai_debug 'No accounts with a Secure Token and FileVault access and a known, problematic password where found.'
+
+        if [[ ${#other_choices_without_password} -gt 0 ]]; then
+          if [[ ${#other_choices_without_password} -eq 1 ]]; then
+            [[ $DEBUG -eq 0 ]] && ohai_debug 'There is one account that has a Secure Token but with no known password.'
+            printf "\n"
+            printf "%s\n" "The password for the following account is needed so that some of the operations can"
+            printf "%s\n" "complete successfully."
+          else
+            [[ $DEBUG -eq 0 ]] && ohai_debug 'There are multiple accounts that have a Secure Token but with no known password.'
+            printf "\n"
+            printf "%s\n" "The password for one of the following accounts is needed so that some of the operations"
+            printf "%s\n" "can complete successfully."
+          fi
+
+          while true; do
+            if [[ ${#other_choices_without_password} -eq 1 ]]; then
+              username=${other_choices_without_password[1]}
+            else
+              PS3="Select account: "
+              select_with_default other_choices_without_password "" username
+            fi
+
+            printf "\n"
+            printf "%s\n" 'Please provide password for `'$username'`.'
+            if [[ $username == "preboot" ]]; then
+              get_account_password "preboot" password "verify"
+            else
+              get_account_password "admin" "$username" password "verify"
+            fi
+            PASSWORDS[$username]=$password
+
+            has_no_leading_trailing_whitespace "$password" && break
+
+            printf '\n'
+            printf "%s\n" 'The password provided for `'$username'` is correct but it contains leading or trailing'
+            printf "%s\n" 'spaces. It needs to be changed or some operations will be unsuccesful. In order for it'
+            printf "%s\n" 'to be used. Please provide a new password.'
+
+            if [[ $username == "preboot" ]]; then
+              get_password_and_confirm "preboot" new_password
+            else
+              get_password_and_confirm "admin" "$username" new_password
+            fi
+
+            printf "\n"
+            ohai 'Changing `'$username'` account password.'
+            (($DISABLED_ACCOUNTS[(Ie)$username])) && enable_account "$username"
+            change_user_password "$username" "${PASSWORDS[$username]}" "$new_password"
+            [[ "$username" == "preboot" ]] && disable_account "preboot"
+            PASSWORDS[$username]=$new_password
+            break
+          done
+
+          main_username=$username
+        else
+          abort 'Oops! No accounts have a Secure Token.  This can happen in rare circumstances but unfortunately there is no way to resolve this issue in a non-destructive way.'
+        fi
       fi
     fi
   fi
 
+  [[ $DEBUG -eq 0 ]] && ohai_debug 'main_username set to `'$main_username'`'
+
+  confirm_all_login_account_passwords_meet_requirements
+  update_secure_token_holder_list
+  enable_secure_token_for_all_accounts
+
   if [[ $EXTREME -eq 0 ]]; then
-    ohai 'Configure Preboot account.'
-    configure_preboot_account preboot_password
-    echo
-  
-    ohai 'Configure FileVault'
-    configure_filevault_extreme "$preboot_password"
-    echo
+    configure_preboot_account
+    configure_filevault_extreme $main_username
   else
-    current_username=$(logname)
-
-    get_filevault_state filevault_state
-  
-    case "$filevault_state" in
-  
-      "off")
-        # *** maybe do not try to do this here ***
-        # if filevault is not enabled, remove preboot account if it exists
-        ;;
-
-      "decrypting")
-        ohai 'FileVault is currently decrypting the drive. Re-run this script once the drive has been fully decrypted in order to re-enable encryption.'
-        ;;
-
-      "on")
-        printf "\n"
-        ohai 'The password for the current account, `'$current_username'`, is required.'
-        ohai 'Please enter the password at the prompt.'
-        get_account_password "admin" "$current_username" current_password "verify"
-        passwords[$current_username]=$current_password
-
-        if ! is_account_secure_token_enabled "$current_username"; then
-          printf "\n"
-          ohai 'The current account, `'$current_username'`, does not have a secure token.'
-          ohai "An account with a secure token is required."
-          get_local_account_list local_account_list
-          secure_token_enabled_account_list=()
-          for i in "${local_account_list[@]}"
-          do
-            if is_account_secure_token_enabled "$i"; then
-              secure_token_enabled_account_list+=("$i")
-            fi
-          done
-          printf "\n"
-          printf "%s\n" "Accounts with a secure token"
-          PS3="Select account: "
-          select_with_default secure_token_enabled_account_list "" selected_username
-          [[ $selected_username == "preboot" ]] && enable_account "preboot"
-          printf "\n"
-          printf "%s\n" 'Please provide password for `'$selected_username'`.'
-          get_account_password "admin" "$selected_username" selected_password "verify"
-          passwords[$selected_username]=$selected_password
-          is_account_admin "$selected_username"
-          selected_is_admin=$?
-          add_user_to_admin_group "$selected_username"
-          enable_secure_token_for_account "$current_username" "$current_password" "$selected_username" "$selected_password"
-          [[ $selected_is_admin -ne 0 ]] && remove_user_from_admin_group "$selected_username"
-          [[ $selected_username == "preboot" ]] && disable_account "preboot"
-        fi
-
-        get_filevault_account_list fv_account_list
-        if ! [[ "${fv_account_list[@]}" =~ "${current_username}" ]]; then
-          printf "\n"
-          ohai "An account with FileVault access is required."
-          printf "\n"
-          printf "%s\n" "Accounts with a FileVault access"
-          PS3="Select account: "
-          select_with_default fv_account_list "" selected_username
-          [[ $selected_username == "preboot" ]] && enable_account "preboot"
-          if [[ -z $passwords[$selected_username] ]]; then
-            printf "\n"
-            printf "%s\n" 'Please provide password for `'$selected_username'`.'
-            get_account_password "admin" "$selected_username" selected_password "verify"
-            passwords[$selected_username]=$selected_password
-          else
-            selected_password=$passwords[$selected_username]
-          fi
-          is_account_admin "$selected_username"
-          selected_is_admin=$?
-          add_user_to_admin_group "$selected_username"
-          grant_account_filevault_access "$current_username" "$current_password" "$selected_username" "$selected_password"
-          [[ $selected_is_admin -ne 0 ]] && remove_user_from_admin_group "$selected_username"
-          [[ $selected_username == "preboot" ]] && disable_account "preboot"
-        fi
-
-        ohai 'Enable secure token for all local accounts.'
-        ohai 'Check that all local accounts on this computer meet password requirements.'
-        unset i
-        for i in "${local_account_list[@]}"
-        do
-          [[ $i == "preboot" ]] && continue
-          if [[ -z $passwords[$i] ]]; then
-            printf "\n"
-            printf "%s\n" 'Please provide password for `'$i'`.'
-            get_account_password "admin" "$i" i_password "verify"
-            passwords[$i]=$i_password
-          else
-            i_password=$passwords[$i]
-          fi
-
-          if ! is_account_secure_token_enabled "$i"; then 
-            ohai 'Enabling secure token for account, `'$i'`'
-            enable_secure_token_for_account "$current_username" "$current_password" "$i" "$i_password"
-          fi
-
-          if ! check_password_complexity "$i_password"; then
-            display_error 'The password is correct but it does not meet our requirements. It will need to be changed. Please enter a new password.'
-            get_password_and_confirm "admin" "$i" new_i_password
-
-            printf "\n"
-            ohai 'Changing `'$i'` account password.'
-            change_user_password "$i" "$i_password" "$new_i_password"
-            passwords[$i]=$new_i_password
-          fi
-        done
-
-        ohai 'Enable FileVault access for all local accounts.'
-        unset i
-        for i in "${local_account_list[@]}"
-        do
-          [[ $i == "preboot" ]] && continue
-          i_password=$passwords[$i]
-          
-          if ! [[ "${fv_account_list[@]}" =~ "$i{}" ]]; then
-            ohai 'Granting FileVault access for account, `'$i'`'
-            grant_account_filevault_access "$i" "$i_password" "$current_username" "$current_password"
-          fi
-        done
-        ;;
-    esac
-
-    echo "${(kv)passwords[@]}"
-    exit
-
-    # if preboot account exists, remove it
+    [[ "$filevault_state" == "off" ]] && enable_filevault $main_username
+    enable_filevault_access_for_all_accounts $main_username
     is_account_exist "preboot" && remove_account "preboot"
   fi
 }
 
-EXTREME=0
+prepare_display_environment
+check_run_command_as_root
+check_run_command_as_admin
 
-usage=(
-  "usage:"
-  " $(basename ${(%):-%x}) [-h|--help]"
-  " $(basename ${(%):-%x}) [--extreme]"
-  " $(basename ${(%):-%x}) [--high]"
-)
+# get script user password
+# note: we get this separately because we need to have sudo prior to attempting to verify
+#       the remaining accounts just in case they are currently disabled.
+ohai 'Getting password for account currently running this script.'
+get_account_password_aux $SCRIPT_USER
 
-opterr() { echo >&2 "$(basename ${(%):-%x}): Unknown option '$1'" }
+# Invalidate sudo timestamp before exiting (if it wasn't active before).
+if [[ -x /usr/bin/sudo ]] && ! /usr/bin/sudo -n -v 2>/dev/null
+then
+  trap '/usr/bin/sudo -k' EXIT
+fi
 
-case $# in
-  0)
-    EXTREME=0
-    ;;
-  1)
-    case $1 in
-      -h|--help)  printf "%s\n" $usage && exit 0 ;;
-      --extreme)  EXTREME=0                      ;;
-      --high)     EXTREME=1                      ;;
-      -*)         opterr $1 && exit 1            ;;
-    esac
-    ;;
-  *)
-    printf "%s\n" "$(basename ${(%):-%x}): too many arguments"
-    exit 1
-    ;;
-esac
+get_sudo "${PASSWORDS[$SCRIPT_USER]}"
+
+check_command_line_options "$@"
+[[ $EXTREME -eq 0 ]] && ohai 'Current Security Level: EXTREME' || ohai 'Current Security Level: HIGH'
+check_for_security_level_downgrade_attempt
 
 main "$@"
 
@@ -252,7 +508,7 @@ rm "${SCRIPT_DIR}/close-terminal.command"
 kill \$(ps -A | grep -w Terminal.app | grep -v grep | awk '{print \$1}')
 EOF
   chmod +x "${SCRIPT_DIR}/close-terminal.command"
-  osascript -e 'tell application "System Events" to make login item at end with properties {path:"'${SCRIPT_DIR}'/close-terminal.command", hidden:false}'
+  osascript -e 'tell application "System Events" to make login item at end with properties {path:"'${SCRIPT_DIR}'/close-terminal.command", hidden:false}' >/dev/null 2>&1
   execute_sudo "reboot"
 fi
 
