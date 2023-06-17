@@ -112,22 +112,36 @@ main () {
         fi
 
         if [[ ${#other_choices_without_password} -gt 0 ]]; then
-          printf "\n"
-          printf "%s\n" "The password for one of the following accounts is needed so that some of the operations"
-          printf "%s\n" "can complete successfully."
-
-          PS3="Select account: "
-          select_with_default other_choices_without_password "" username
-
-          printf "\n"
-          printf "%s\n" 'Please provide password for `'$username'`.'
-          if [[ $username == "preboot" ]]; then
-            get_account_password "preboot" password "verify"
+          if [[ ${#other_choices_without_password} -eq 1 ]]; then
+            [[ $DEBUG -eq 0 ]] && ohai_debug 'There is one account that has FileVault access and a Secure Token but with no known password.'
+            printf "\n"
+            printf "%s\n" "The password for the following account is needed so that some of the operations can"
+            printf "%s\n" "complete successfully."
           else
-            get_account_password "admin" "$username" password "verify" 
+            [[ $DEBUG -eq 0 ]] && ohai_debug 'There are multiple accounts that have FileVault access and a Secure Token but with no known password.'
+            printf "\n"
+            printf "%s\n" "The password for one of the following accounts is needed so that some of the operations"
+            printf "%s\n" "can complete successfully."
           fi
+          
+          while true; do
+            if [[ ${#other_choices_without_password} -eq 1 ]]; then
+              username=${other_choices_without_password[1]}
+            else
+              PS3="Select account: "
+              select_with_default other_choices_without_password "" username
+            fi
+          
+            printf "\n"
+            printf "%s\n" 'Please provide password for `'$username'`.'
+            if [[ $username == "preboot" ]]; then
+              get_account_password "preboot" password "verify"
+            else
+              get_account_password "admin" "$username" password "verify" 
+            fi
     
-          if ! has_no_leading_trailing_whitespace "$password"; then
+            has_no_leading_trailing_whitespace "$password" && break
+
             printf '\n'
             printf "%s\n" 'The password provided for `'$username'` is correct but it contains leading or trailing'
             printf "%s\n" 'spaces. It needs to be changed in order to proceed. Please provide a new password.'
@@ -143,9 +157,11 @@ main () {
             (($DISABLED_ACCOUNTS[(Ie)$username])) && enable_account "$username"
             change_user_password "$username" "${PASSWORDS[$username]}" "$new_password"
             [[ "$username" == "preboot" ]] && disable_account "preboot"
-          fi
+            password=$new_password
+            break
+          done
 
-          PASSWORDS[$username]=$new_password
+          PASSWORDS[$username]=$password
           main_username=$username
         fi
         if [[ -z "$main_username" ]]; then
@@ -464,7 +480,11 @@ main "$@"
 display_message "The script has completed running."
 printf "\n"
 
-display_message "It is strongly recommended that you reboot the computer and practice unlocking the disk encryption by using the new "Pre-Boot Authentication" account to authenticate"
+if [[ $EXTREME -eq 0 ]]; then
+  display_message 'It is strongly recommended that you reboot the computer and practice unlocking the disk encryption by using the new "Pre-Boot Authentication" account to authenticate'
+else
+  display_message 'It is strongly recommended that you reboot the computer and practice unlocking the disk encryption.'
+fi
 printf "\n"
 
 ask_yes_no "Reboot now? (y/n)"
