@@ -443,6 +443,13 @@ main () {
     enable_filevault_access_for_all_accounts $main_username
     is_account_exist "preboot" && remove_account "preboot"
   fi
+
+  # disable accounts that passwords were not provided for
+  ohai "Disabing accounts that passwords weren't provided for."
+  unset username
+  for username in "${ACCOUNTS_TO_DISABLE[@]}"; do
+    disable_account "$username"
+  done
 }
 
 typeset choice
