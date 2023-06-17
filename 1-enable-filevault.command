@@ -29,7 +29,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${(%):-%x}" )" &> /dev/null && pwd )
 SCRIPT_USER=$(logname)
 
 # set DEBUG to 0 to enable debugging messages
-DEBUG=0
+DEBUG=1
 
 main () {
   typeset filevault_state
