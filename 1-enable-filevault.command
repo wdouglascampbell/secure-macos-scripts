@@ -31,45 +31,12 @@ SCRIPT_USER=$(logname)
 # set DEBUG to 0 to enable debugging messages
 DEBUG=0
 
-# EXTREME=0 (run using EXTREME security level)
-# EXTREME=1 (run using HIGH security level)
-EXTREME=0
-
-check_command_line_options () {
-  usage=(
-    "usage:"
-    " $(basename ${(%):-%x}) [-h|--help]"
-    " $(basename ${(%):-%x}) [--extreme]"
-    " $(basename ${(%):-%x}) [--high]"
-  )
-  
-  opterr() { echo >&2 "$(basename ${(%):-%x}): Unknown option '$1'" }
-  
-  case $# in
-    0)
-      EXTREME=0
-      ;;
-    1)
-      case $1 in
-        -h|--help)  printf "%s\n" $usage && exit 0 ;;
-        --extreme)  EXTREME=0                      ;;
-        --high)     EXTREME=1                      ;;
-        -*)         opterr $1 && exit 1            ;;
-      esac
-      ;;
-    *)
-      printf "%s\n" "$(basename ${(%):-%x}): too many arguments"
-      exit 1
-      ;;
-  esac
-}
-
 main () {
-  local filevault_state
-  local fv_username
-  local main_username
-  local username password new_password
-  local secure_token_user_username
+  typeset filevault_state
+  typeset fv_username
+  typeset main_username
+  typeset username password new_password
+  typeset secure_token_user_username
   typeset -a other_choices_with_password
   typeset -a other_choices_without_password
 
@@ -462,9 +429,19 @@ main () {
   fi
 }
 
+typeset choice
+typeset -a security_levels=("EXTREME" "HIGH")
+
 prepare_display_environment
 check_run_command_as_root
 check_run_command_as_admin
+
+printf "%s\n" "A security level choice must be made."
+PS3="Select security level: "
+select_with_default security_levels "EXTREME" choice
+[[ $choice == "EXTREME" ]] && EXTREME=0 || EXTREME=1
+
+[[ $EXTREME -eq 0 ]] && ohai 'Current Security Level: EXTREME' || ohai 'Current Security Level: HIGH'
 
 # get script user password
 # note: we get this separately because we need to have sudo prior to attempting to verify
@@ -480,8 +457,6 @@ fi
 
 get_sudo "${PASSWORDS[$SCRIPT_USER]}"
 
-check_command_line_options "$@"
-[[ $EXTREME -eq 0 ]] && ohai 'Current Security Level: EXTREME' || ohai 'Current Security Level: HIGH'
 check_for_security_level_downgrade_attempt
 
 main "$@"
