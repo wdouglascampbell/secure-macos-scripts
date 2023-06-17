@@ -447,9 +447,10 @@ main () {
 
   [[ $DEBUG -eq 0 ]] && ohai_debug 'main_username set to `'$main_username'`'
 
+  [[ $DEBUG -eq 0 ]] && ohai_debug 'preboot password: '${PASSWORDS[preboot]}
   confirm_all_login_account_passwords_meet_requirements
   update_secure_token_holder_list
-  enable_secure_token_for_all_accounts
+  enable_secure_token_for_all_accounts $main_username
 
   if [[ $EXTREME -eq 0 ]]; then
     configure_preboot_account

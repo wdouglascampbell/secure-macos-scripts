@@ -69,7 +69,9 @@ enable_account () {
 }
 
 enable_secure_token_for_account () {
+  add_user_to_admin_group "$3"
   execute_sudo "sysadminctl" "-secureTokenOn" "$1" "-password" "$2" "-adminUser" "$3" "-adminPassword" "$4" 2>/dev/null
+  (($ADMINS[(Ie)$3])) || remove_user_from_admin_group "$3"
 }
 
 enable_secure_token_for_all_accounts () {
@@ -79,9 +81,9 @@ enable_secure_token_for_all_accounts () {
 
   for username in "${LOGIN_ACCOUNTS[@]}"; do
     (($SECURE_TOKEN_HOLDERS[(Ie)$username])) && continue
-    [[ "$main_username" == "preboot" ]] && enable_account "preboot"
-    enable_secure_token_for_account "$username" "${PASSWORDS[$username]}" "$main_username" "${PASSWORDS[$main_username]}"
-    [[ "$main_username" == "preboot" ]] && disable_account "preboot"
+    [[ "$1" == "preboot" ]] && enable_account "preboot"
+    enable_secure_token_for_account "$username" "${PASSWORDS[$username]}" "$1" "${PASSWORDS[$1]}"
+    [[ "$1" == "preboot" ]] && disable_account "preboot"
     SECURE_TOKEN_HOLDERS+=("$username")
   done
 }
@@ -310,6 +312,7 @@ is_user_password_valid () {
 }
 
 remove_account () {
+  enable_account "$1"
   execute_sudo "dscl" "." "-delete" "/Users/$1"
   execute_sudo "rm" "-rf" "/Users/$1"
 }
