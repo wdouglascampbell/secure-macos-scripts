@@ -199,19 +199,24 @@ get_account_password_aux () {
         printf '\n'
         if [[ $EXTREME -eq 0 ]]; then
           display_error 'Access to the `preboot` account is required for the EXTREME security level.'
-          ask_yes_no 'Would you like to reset the `preboot` password? (y/n)'
-          if [[ $? -eq 0 ]]; then
-            trap - INT
-            printf '\n\n'
-            printf "%s\n" 'Please enter a new password for `preboot`.'
-            get_password_and_confirm "preboot" password
-            PASSWORDS[$username]=$password
-            RESET_PREBOOT_PASSWORD=0
-            break
-          else
-            printf '\n\n'
-            printf "%s\n" 'Please provide password for `preboot`.'
-          fi
+          #ask_yes_no 'Would you like to reset the `preboot` password? (y/n)'
+          #if [[ $? -eq 0 ]]; then
+          #  trap - INT
+          #  printf '\n\n'
+          #  printf "%s\n" 'Please enter a new password for `preboot`.'
+          #  get_password_and_confirm "preboot" new_password
+
+          #  printf "\n" 
+          #  ohai 'Changing `preboot` account password.'
+          #  enable_account "preboot"
+          #  change_user_password "$username" "$password" "$new_password"
+          #  disable_account "preboot"
+          #  PASSWORDS[preboot]=$new_password
+          #  break
+          #else
+          #  printf '\n\n'
+          #  printf "%s\n" 'Please provide password for `preboot`.'
+          #fi
         else
           trap - INT
           break
