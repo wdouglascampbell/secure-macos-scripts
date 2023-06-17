@@ -8,11 +8,9 @@ typeset -a ADMINS
 typeset -a DISABLED_ACCOUNTS
 typeset -a FILEVAULT_ENABLED_ACCOUNTS
 typeset -a LOGIN_ACCOUNTS
-typeset -a PASSWORD_CHANGE_REQUIRED_ACCOUNTS
 typeset -A PASSWORDS
 typeset -a SECURE_TOKEN_HOLDERS
 
-typeset -i RESET_PREBOOT_PASSWORD=1  # default: 1 (false)
-
+typeset DEBUG
 typeset SCRIPT_USER
 
