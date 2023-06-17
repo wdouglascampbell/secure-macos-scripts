@@ -35,6 +35,7 @@ configure_preboot_account () {
     fi
   else
     ohai 'A `preboot` account is required to configure whole disc encryption with preboot authentication.'
+    printf '\n'
     ohai 'Please provide a password for the `preboot` account.'
     get_password_and_confirm "preboot" password
     printf "\n"

@@ -48,10 +48,11 @@ main () {
   check_all_login_accounts_for_problem_passwords
 
   if [[ "$filevault_state" == "on" ]]; then
-    ohai 'FileVault is Enabled.'
-    ohai 'Searching for account with a Secure Token and FileVault access.'
-
-    [[ $DEBUG -eq 0 ]] && ohai_debug 'Searching accounts with FileVault access for ones that also have a Secure Token and a known, good password.'
+    if [[ $DEBUG -eq 0 ]]; then
+      ohai_debug 'FileVault is Enabled.'
+      ohai_debug 'Searching for account with a Secure Token and FileVault access.'
+      ohai_debug 'Searching accounts with FileVault access for ones that also have a Secure Token and a known, good password.'
+    fi
 
     unset username
     for username in "${FILEVAULT_ENABLED_ACCOUNTS[@]}"; do
@@ -140,7 +141,7 @@ main () {
               get_account_password "admin" "$username" password "verify" 
             fi
     
-            has_no_leading_trailing_whitespace "$password" && break
+            has_no_leading_trailing_whitespace "$password" && printf '\n' && break
 
             printf '\n'
             printf "%s\n" 'The password provided for `'$username'` is correct but it contains leading or trailing'
@@ -214,7 +215,7 @@ main () {
                 fi
                 PASSWORDS[$username]=$password
 
-                has_no_leading_trailing_whitespace "$password" && break
+                has_no_leading_trailing_whitespace "$password" && printf '\n' &&  break
                 display_error 'Unfortunately this password while correct contains leading or trailing spaces.  Please select a different account to try.'
                 ACCOUNTS_WITH_PROBLEM_PASSWORDS+=("$username")
                 other_choices_without_password=("${(@)other_choices_without_password:#${username}}")
@@ -279,7 +280,7 @@ main () {
                 fi
                 PASSWORDS[$username]=$password
 
-                has_no_leading_trailing_whitespace "$password" && break
+                has_no_leading_trailing_whitespace "$password" && printf '\n' && break
                 display_error 'Unfortunately this password while correct contains leading or trailing spaces.  Please select a different account to try.'
                 ACCOUNTS_WITH_PROBLEM_PASSWORDS+=("$username")
                 other_choices_without_password=("${(@)other_choices_without_password:#${username}}")
@@ -305,10 +306,11 @@ main () {
       fi
     fi
   else
-    ohai 'FileVault is Disabled.'
-    ohai 'Searching for account with a Secure Token and FileVault access.'
-
-    [[ $DEBUG -eq 0 ]] && ohai_debug 'Searching accounts with a Secure Token and FileVault access for ones with a known, good password.'
+    if [[ $DEBUG -eq 0 ]]; then
+      ohai_debug 'FileVault is Disabled.'
+      ohai_debug 'Searching for account with a Secure Token and FileVault access.'
+      ohai_debug 'Searching accounts with a Secure Token and FileVault access for ones with a known, good password.'
+    fi
     
     unset other_choices_with_password
     unset other_choices_without_password
@@ -398,7 +400,7 @@ main () {
             fi
             PASSWORDS[$username]=$password
 
-            has_no_leading_trailing_whitespace "$password" && break
+            has_no_leading_trailing_whitespace "$password" && printf '\n' && break
 
             printf '\n'
             printf "%s\n" 'The password provided for `'$username'` is correct but it contains leading or trailing'
@@ -445,7 +447,7 @@ main () {
   fi
 
   # disable accounts that passwords were not provided for
-  ohai "Disabing accounts that passwords weren't provided for."
+  [[ $DEBUG -eq 0 ]] && ohai_debug "Disabling accounts that passwords weren't provided for."
   unset username
   for username in "${ACCOUNTS_TO_DISABLE[@]}"; do
     disable_account "$username"
@@ -471,6 +473,7 @@ select_with_default security_levels "EXTREME" choice
 #       the remaining accounts just in case they are currently disabled.
 ohai 'Getting password for account currently running this script.'
 get_account_password_aux $SCRIPT_USER
+printf '\n'
 
 # Invalidate sudo timestamp before exiting (if it wasn't active before).
 if [[ -x /usr/bin/sudo ]] && ! /usr/bin/sudo -n -v 2>/dev/null
@@ -484,8 +487,9 @@ check_for_security_level_downgrade_attempt
 
 main "$@"
 
+printf '\n'
 display_message "The script has completed running."
-printf "\n"
+printf '\n'
 
 if [[ $EXTREME -eq 0 ]]; then
   display_message 'It is strongly recommended that you reboot the computer and practice unlocking the disk encryption by using the new "Pre-Boot Authentication" account to authenticate'
@@ -497,9 +501,12 @@ printf "\n"
 ask_yes_no "Reboot now? (y/n)"
 if [[ $? -eq 0 ]]; then
   clear
-  printf "\n"
+  printf '\n'
   display_message "Restarting computer in 5 seconds..."
-  printf "\n"
+  printf '\n'
+  display_message "If a dialog appears stating '"'"Terminal" wants access to control "System Events". Allowing control will provide access to documents and data in "System Events", and to perform actions within that app.'"' Please click 'OK'."
+  printf '\n'
+  display_message "If a dialog appears stating '"'"System Events" would like to access files in your Desktop folder.'"' Please click 'OK'."
   sleep 5
 
   # deploy temporary script to run at next login that will close the Terminal window

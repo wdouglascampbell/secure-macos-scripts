@@ -18,7 +18,7 @@ check_all_login_accounts_for_problem_passwords () {
   local username
   local password
 
-  ohai 'Checking provided login account passwords for problems.'
+  [[ $DEBUG -eq 0 ]] && ohai_debug 'Checking provided login account passwords for problems.'
 
   for username password in "${(kv)PASSWORDS[@]}"; do
     # check account password for leading or trailing spaces
@@ -77,7 +77,7 @@ enable_secure_token_for_account () {
 enable_secure_token_for_all_accounts () {
   typeset username
 
-  ohai 'Ensuring all login accounts have a secure token.'
+  [[ $DEBUG -eq 0 ]] && ohai_debug 'Ensuring all login accounts have a secure token.'
 
   for username in "${LOGIN_ACCOUNTS[@]}"; do
     (($SECURE_TOKEN_HOLDERS[(Ie)$username])) && continue
@@ -218,7 +218,7 @@ get_account_password_aux () {
 get_info_all_login_accounts () {
   typeset username
 
-  ohai 'Retrieving information on all system login accounts.'
+  [[ $DEBUG -eq 0 ]] && ohai_debug 'Retrieving information on all system login accounts.'
 
   unset username
   for username in "${LOGIN_ACCOUNTS[@]}"
@@ -239,21 +239,24 @@ get_passwords_for_remaining_login_accounts () {
   typeset username
 
   if [[ ${#LOGIN_ACCOUNTS} -gt 1 ]]; then
-    ohai 'Getting passwords for remaining login accounts.'
+    if [[ $DEBUG -eq 0 ]]; then
+      ohai_debug 'Getting passwords for remaining login accounts.'
+      printf '\n'
+    fi
 
-    printf '\n'
-    ohai 'You will be prompted for a password for each account. You may press Ctrl+C to skip an account. Skipped accounts will be disabled. Under certain circumstances you may be required later to provide a password for a skipped account because it has access permissions not provided by other accounts.'
+    display_message 'You will be prompted for a password for each account. You may press Ctrl+C to skip an account. Skipped accounts will be disabled. Under certain circumstances you may be required later to provide a password for a skipped account because it has access permissions not provided by other accounts.'
 
     for username in "${LOGIN_ACCOUNTS[@]}"
     do 
       [[ $username == $SCRIPT_USER ]] && continue
       get_account_password_aux $username
     done
+    printf '\n'
   fi
 }
 
 get_login_account_list () {
-  ohai 'Getting list of system login accounts.'
+  [[ $DEBUG -eq 0 ]] && ohai_debug 'Getting list of system login accounts.'
 
   LOGIN_ACCOUNTS=$(
     dscl . list /Users UniqueID | \
@@ -311,7 +314,7 @@ remove_user_from_admin_group () {
 update_secure_token_holder_list () {
   typeset username
 
-  ohai 'Updating Secure Token Holders list.'
+  [[ $DEBUG -eq 0 ]] && ohai_debug 'Updating Secure Token Holders list.'
 
   unset SECURE_TOKEN_HOLDERS
 

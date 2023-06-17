@@ -10,10 +10,12 @@ check_for_security_level_downgrade_attempt () {
       ask_yes_no "Should the security level be retained at EXTREME? (y/n)"
       if [[ $? -eq 0 ]]; then
         EXTREME=0
-        printf "\n"
+        printf '\n'
+        printf '\n'
         ohai 'Updated Security Level: EXTREME'
       else
-        printf "\n"
+        printf '\n'
+        printf '\n'
       fi
     fi
   fi
@@ -30,10 +32,11 @@ configure_filevault_extreme () {
   case "$filevault_state" in
 
   "off")
-    ohai "FileVaule is off. Proceeding with encryption..."
-    ohai "Click 'OK' button in response to the dialog that appears stating that"
-    ohai "'fdesetup would like to enable FileVault.'"
+    ohai "FileVault is Disabled. Proceeding with encryption..."
+    printf '\n'
+    display_message "Click 'OK' button in response to the dialog that appears stating that 'fdesetup would like to enable FileVault.'"
     enable_filevault_extreme
+    printf '\n'
     ;;
 
   "decrypting")
@@ -41,7 +44,7 @@ configure_filevault_extreme () {
     ;;
 
   "on")
-    ohai 'FileVault is on.' 
+    ohai 'FileVault is Enabled.' 
 
     # ensure preboot account can unlock FileVault
     if ! (($FILEVAULT_ENABLED_ACCOUNTS[(Ie)preboot])); then
@@ -87,7 +90,7 @@ EOF
 }
 
 get_filevault_account_list () {
-  ohai 'Getting list of accounts with FileVault access.'
+  [[ $DEBUG -eq 0 ]] && ohai_debug 'Getting list of accounts with FileVault access.'
 
   FILEVAULT_ENABLED_ACCOUNTS=$(
     execute_sudo "fdesetup" "list" | \
@@ -100,7 +103,7 @@ get_filevault_account_list () {
 get_filevault_state () {
   local _state=$1
 
-  ohai 'Getting FileVault state.'
+  [[ $DEBUG -eq 0 ]] && ohai_debug 'Getting FileVault state.'
 
   if [[ $(fdesetup status | grep "FileVault" | grep "On" | wc -l) -eq 1 ]]; then
     if [[ $(fdesetup status | grep "^Decryption in progress" | wc -l) -eq 1 ]]; then
@@ -122,14 +125,18 @@ enable_filevault () {
 enable_filevault_access_for_all_accounts () {
   typeset username
 
-  ohai 'Enablng FileVault access for all accounts.'
+  ohai 'Enabling FileVault access for all accounts.'
+
+  printf '\n'
+  display_message "If a dialog appears stating '"'"Terminal" would like to administer your computer. Administration can include modifying passwords, networking, and system settings.'"'. Please click 'OK'."
+  printf '\n'
 
   for username in "${LOGIN_ACCOUNTS[@]}"
   do
     [[ "$username" == "preboot" ]] && continue
 
     if ! (($FILEVAULT_ENABLED_ACCOUNTS[(Ie)$username])); then
-      ohai 'Granting FileVault access for account, `'$username'`'
+      [[ $DEBUG -eq 0 ]] && ohai_debug 'Granting FileVault access for account, `'$username'`'
       [[ "$1" == "preboot" ]] && enable_account "preboot"
       grant_account_filevault_access "$username" "${PASSWORDS[$username]}" "$1" "${PASSWORDS[$1]}"
       [[ "$1" == "preboot" ]] && disable_account "preboot"
