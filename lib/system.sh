@@ -71,7 +71,7 @@ enable_account () {
 enable_secure_token_for_account () {
   add_user_to_admin_group "$3"
   execute_sudo "sysadminctl" "-secureTokenOn" "$1" "-password" "$2" "-adminUser" "$3" "-adminPassword" "$4" 2>/dev/null
-  ! (($ADMINS[(Ie)$3])) || remove_user_from_admin_group "$3"
+  (($ADMINS[(Ie)$3])) || remove_user_from_admin_group "$3"
 }
 
 enable_secure_token_for_all_accounts () {
