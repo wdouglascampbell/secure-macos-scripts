@@ -32,6 +32,7 @@ configure_filevault_extreme () {
   case "$filevault_state" in
 
   "off")
+    [[ $DEBUG -eq 0 ]] & ohai_debug 'Checkpoint 85'
     ohai "FileVault is Disabled. Proceeding with encryption..."
     printf '\n'
     display_message "Click 'OK' button in response to the dialog that appears stating that 'fdesetup would like to enable FileVault.'"
@@ -44,10 +45,12 @@ configure_filevault_extreme () {
     ;;
 
   "on")
+    [[ $DEBUG -eq 0 ]] & ohai_debug 'Checkpoint 86'
     ohai 'FileVault is Enabled.' 
 
     # ensure preboot account can unlock FileVault
     if ! (($FILEVAULT_ENABLED_ACCOUNTS[(Ie)preboot])); then
+      [[ $DEBUG -eq 0 ]] & ohai_debug 'Checkpoint 87'
       ohai '`preboot` account does not have permissions to unlock FileVault.'
 
       enable_account "preboot"
@@ -119,7 +122,7 @@ get_filevault_state () {
 enable_filevault () {
   add_user_to_admin_group "$1"
   encrypt_using_fdesetup_with_expect "$1" "${PASSWORDS[$1]}"
-  (($ADMINS[(Ie)$1])) && remove_user_from_admin_group "$1"
+  ! (($ADMINS[(Ie)$1])) && remove_user_from_admin_group "$1"
 }
 
 enable_filevault_access_for_all_accounts () {
