@@ -126,7 +126,7 @@ main () {
 
         if [[ ${#other_choices_without_password} -gt 0 ]]; then
           if [[ ${#other_choices_without_password} -eq 1 ]]; then
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 12'
+            [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 13'
             [[ $DEBUG -eq 0 ]] && ohai_debug 'There is one account that has FileVault access and a Secure Token but with no known password.'
             printf "\n"
             printf "%s\n" "The password for the following account is needed so that some of the operations can"
@@ -529,6 +529,7 @@ main () {
     [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 90'
     enable_filevault_access_for_all_accounts $main_username
     is_account_exist "preboot" && remove_account "preboot"
+    show_others_option_from_login_screen
   fi
 
   # disable accounts that passwords were not provided for
