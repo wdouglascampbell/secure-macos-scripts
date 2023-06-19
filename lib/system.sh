@@ -62,10 +62,12 @@ confirm_all_login_account_passwords_meet_requirements () {
 
 disable_account () {
   execute_sudo "pwpolicy" "-u" "$1" "-disableuser" >/dev/null 2>&1
+  DISABLED_ACCOUNTS+=("$1")
 }
 
 enable_account () {
   execute_sudo "pwpolicy" "-u" "$1" "-enableuser" >/dev/null 2>&1
+  DISABLED_ACCOUNTS=("${(@)DISABLED_ACCOUNTS:#${1}}")
 }
 
 enable_secure_token_for_account () {
@@ -77,13 +79,19 @@ enable_secure_token_for_account () {
 enable_secure_token_for_all_accounts () {
   typeset username
 
-  [[ $DEBUG -eq 0 ]] && ohai_debug 'Ensuring all login accounts have a secure token.'
+  if [[ $DEBUG -eq 0 ]]; then
+    ohai_debug 'Ensuring all login accounts have a secure token.'
+    ohai_debug 'DISABLED_ACCOUNTS: '${DISABLED_ACCOUNTS[@]}
+    ohai_debug 'ACCOUNTS_TO_DISABLE: '${ACCOUNTS_TO_DISABLE[@]}
+  fi
 
   for username in "${LOGIN_ACCOUNTS[@]}"; do
+    (($DISABLED_ACCOUNTS[(Ie)$username])) && continue
+    (($ACCOUNTS_TO_DISABLE[(Ie)$username])) && continue
     (($SECURE_TOKEN_HOLDERS[(Ie)$username])) && continue
-    [[ "$1" == "preboot" ]] && enable_account "preboot"
+    [[ "$1" == "preboot" ]] || [[ "$username" == "preboot" ]] && enable_account "preboot"
     enable_secure_token_for_account "$username" "${PASSWORDS[$username]}" "$1" "${PASSWORDS[$1]}"
-    [[ "$1" == "preboot" ]] && disable_account "preboot"
+    [[ "$1" == "preboot" ]] || [[ "$username" == "preboot" ]] && disable_account "preboot"
     SECURE_TOKEN_HOLDERS+=("$username")
   done
 }
@@ -246,12 +254,14 @@ get_passwords_for_remaining_login_accounts () {
 
     display_message 'You will be prompted for a password for each account. You may press Ctrl+C to skip an account. Skipped accounts will be disabled. Under certain circumstances you may be required later to provide a password for a skipped account because it has access permissions not provided by other accounts.'
 
+    [[ $DEBUG -eq 0 ]] && ohai_debug '*old* DISABLED_ACCOUNTS: '${DISABLED_ACCOUNTS[@]}
     for username in "${LOGIN_ACCOUNTS[@]}"
     do 
       [[ $username == $SCRIPT_USER ]] && continue
       get_account_password_aux $username
     done
     printf '\n'
+    [[ $DEBUG -eq 0 ]] && ohai_debug '*new* DISABLED_ACCOUNTS: '${DISABLED_ACCOUNTS[@]}
   fi
 }
 
@@ -282,7 +292,7 @@ is_account_admin () {
 }
 
 is_account_enabled () {
-  pwpolicy -u $username authentication-allowed | grep "is disabled" > /dev/null
+  pwpolicy -u $username authentication-allowed | grep "allows user" > /dev/null
 }
 
 is_account_secure_token_enabled () {
@@ -311,10 +321,15 @@ remove_user_from_admin_group () {
   execute_sudo "dseditgroup" "-o" "edit" "-d" "$1" "-t" "user" "admin"
 }
 
+show_others_option_from_login_screen () {
+  execute_sudo "defaults" "write" "/Library/Preferences/com.apple.loginwindow" "SHOWOTHERUSERS_MANAGED" "-bool" "TRUE"
+}
+
 update_secure_token_holder_list () {
   typeset username
 
   [[ $DEBUG -eq 0 ]] && ohai_debug 'Updating Secure Token Holders list.'
+  [[ $DEBUG -eq 0 ]] & ohai_debug '*old* SECURE_TOKEN_HOLDERS = '${SECURE_TOKEN_HOLDERS[@]}
 
   unset SECURE_TOKEN_HOLDERS
 
@@ -324,5 +339,6 @@ update_secure_token_holder_list () {
       SECURE_TOKEN_HOLDERS+=("$username")
     fi
   done
+  [[ $DEBUG -eq 0 ]] & ohai_debug '*new* SECURE_TOKEN_HOLDERS = '${SECURE_TOKEN_HOLDERS[@]}
 }
 
