@@ -59,6 +59,7 @@ configure_filevault_extreme () {
     fi
 
     hide_account "preboot"
+    hide_others_option_from_login_screen
     remove_filevault_unlock_for_other_users
     ;;
 
