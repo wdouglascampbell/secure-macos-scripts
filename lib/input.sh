@@ -64,8 +64,8 @@ get_input_from_user () {
   local PROMPT=$1
   local RESPONSE=$2
   local SECRET=${3:-0}
-  local REGEX=${4:""}
-  local VER_FUNC=${5:""}
+  local REGEX=${4:-""}
+  local VER_FUNC=${5:-""}
   local VER_FUNC_NUM_ARGS=$((${#}-5))
   local VER_FUNC_ARGS=()
   local ERROR_MSG
