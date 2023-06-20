@@ -86,7 +86,7 @@ enable_secure_token_for_all_accounts () {
   fi
 
   for username in "${LOGIN_ACCOUNTS[@]}"; do
-    (($DISABLED_ACCOUNTS[(Ie)$username])) && continue
+    (($DISABLED_ACCOUNTS[(Ie)$username])) && [[ $username != "preboot" ]] && continue
     (($ACCOUNTS_TO_DISABLE[(Ie)$username])) && continue
     (($SECURE_TOKEN_HOLDERS[(Ie)$username])) && continue
     [[ "$1" == "preboot" ]] || [[ "$username" == "preboot" ]] && enable_account "preboot"
@@ -208,6 +208,7 @@ get_account_password_aux () {
         if [[ $EXTREME -eq 0 ]]; then
           display_error 'Access to the `preboot` account is required for the EXTREME security level.'
         else
+          ACCOUNTS_TO_DISABLE+=("$username")
           trap - INT
           break
         fi
@@ -305,7 +306,14 @@ is_account_exist () {
 }
 
 is_user_password_valid () {
-  dscl /Local/Default -authonly "$1" "$2" 2>/dev/null 1>&2 && return 0
+  local is_account_enabled
+
+  is_account_enabled=$(pwpolicy -u $1 authentication-allowed | grep -c "is disabled")
+  [[ $is_account_enabled -ne 0 ]] && enable_account "$1"
+  dscl /Local/Default -authonly "$1" "$2" 2>/dev/null 1>&2
+  result=$?
+  [[ $is_account_enabled -ne 0 ]] && disable_account "$1"
+  [[ $result -eq 0 ]] && return 0
 
   display_error "Password Invalid!"
   return 1
@@ -329,7 +337,7 @@ update_secure_token_holder_list () {
   typeset username
 
   [[ $DEBUG -eq 0 ]] && ohai_debug 'Updating Secure Token Holders list.'
-  [[ $DEBUG -eq 0 ]] & ohai_debug '*old* SECURE_TOKEN_HOLDERS = '${SECURE_TOKEN_HOLDERS[@]}
+  [[ $DEBUG -eq 0 ]] && ohai_debug '*old* SECURE_TOKEN_HOLDERS = '${SECURE_TOKEN_HOLDERS[@]}
 
   unset SECURE_TOKEN_HOLDERS
 
@@ -339,6 +347,6 @@ update_secure_token_holder_list () {
       SECURE_TOKEN_HOLDERS+=("$username")
     fi
   done
-  [[ $DEBUG -eq 0 ]] & ohai_debug '*new* SECURE_TOKEN_HOLDERS = '${SECURE_TOKEN_HOLDERS[@]}
+  [[ $DEBUG -eq 0 ]] && ohai_debug '*new* SECURE_TOKEN_HOLDERS = '${SECURE_TOKEN_HOLDERS[@]}
 }
 
