@@ -1,10 +1,12 @@
+<base target="_blank">
+
 # secure-macos-scripts
 This repository contains a collection of Z shell scripts for securing macOS.
 
 ## Initial Setup
-1. Download the latest package.
-2. Insert a USB drive.
-3. Extract the package to the USB drive.
+1. Download the [latest package](https://github.com/wdouglascampbell/secure-macos-scripts/releases/latest). *Note: Download the tar.gz source code.*
+1. Insert a USB drive.
+1. Copy and extract the downloaded source code archive to the USB drive.
 
 ## 1-ensure-secure-passwords-and-active-encryption.command
 
@@ -16,8 +18,8 @@ The **EXTREME** level of security ensures that encryption is active and that onl
 
 ### Running The Script
 
-1. Double-click "1-ensure-secure-passwords-and-active-encryption.command".
+1. Double-click the script **1-ensure-secure-passwords-and-active-encryption.command**.
 2. If you are prompted with a dialog asking for permission to allow "Terminal" access to the files in the folder containing the script, click OK.
 3. Select the security level, **HIGH** or **EXTREME**, that you want to use based on the security at your location.
-4. Follow the instructions presented and respond to questions and password requests.
-5. When the script has completed its work you will be prompted to reboot the computer. You are strongly encouraged to reboot the computer and go through the new sign in process while these changes are fresh in your mind.
+4. Follow the displayed instructions and respond to the questions and password requests.
+5. Once the script has finished, you will be prompted to reboot the computer. You are **strongly** encouraged to reboot the computer and go through the new sign in process while these changes are fresh in your mind.
