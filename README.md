@@ -2,7 +2,7 @@
 This repository contains a collection of Z shell scripts for securing macOS.
 
 ## Initial Setup
-1. Download the <a href="https://github.com/wdouglascampbell/secure-macos-scripts/releases/latest" target="_blank">latest package</a>. *Note: Download the tar.gz source code.*
+1. Download the [latest package](https://github.com/wdouglascampbell/secure-macos-scripts/releases/latest). *Note: Download the tar.gz source code.*
 1. Insert a USB drive.
 1. Copy and extract the downloaded source code archive to the USB drive.
 
@@ -21,5 +21,3 @@ The **EXTREME** level of security ensures that encryption is active and that onl
 3. Select the security level, **HIGH** or **EXTREME**, that you want to use based on the security at your location.
 4. Follow the displayed instructions and respond to the questions and password requests.
 5. Once the script has finished, you will be prompted to reboot the computer. You are **strongly** encouraged to reboot the computer and go through the new sign in process while these changes are fresh in your mind.
-
-<script src='https://cdn.jsdelivr.net/gh/eddymens/markdown-external-link-script@v1.0.0/main.min.js'></script>
