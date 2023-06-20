@@ -2,7 +2,7 @@
 This repository contains a collection of Z shell scripts for securing macOS.
 
 ## Initial Setup
-1. Download the [latest package {_ext}](https://github.com/wdouglascampbell/secure-macos-scripts/releases/latest). *Note: Download the tar.gz source code.*
+1. Download the <a href="https://github.com/wdouglascampbell/secure-macos-scripts/releases/latest" target="_blank">latest package</a>. *Note: Download the tar.gz source code.*
 1. Insert a USB drive.
 1. Copy and extract the downloaded source code archive to the USB drive.
 
