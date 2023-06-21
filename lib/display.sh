@@ -29,21 +29,6 @@ display_prompt () {
   printf "${tty_grey}${1} ${tty_reset}"
 }
 
-display_variable_state () {
-  ohai_debug 'Variable State'
-  ohai_debug '  LOGIN_ACCOUNTS: '${LOGIN_ACCOUNTS[@]}
-  ohai_debug '  FILEVAULT_ENABLED_ACCOUNTS: '${FILEVAULT_ENABLED_ACCOUNTS[@]}
-  ohai_debug '  Usernames of PASSWORDS provided: '${(k)PASSWORDS[@]}
-  ohai_debug '  ADMINS: '${ADMINS[@]}
-  ohai_debug '  DISABLED_ACCOUNTS: '${DISABLED_ACCOUNTS[@]}
-  ohai_debug '  SECURE_TOKEN_HOLDERS: '${SECURE_TOKEN_HOLDERS[@]}
-  ohai_debug '  ACCOUNTS_TO_DISABLE: '${ACCOUNTS_TO_DISABLE[@]}
-  ohai_debug '  ACCOUNTS_WITH_PROBLEM_PASSWORDS: '${ACCOUNTS_WITH_PROBLEM_PASSWORDS[@]}
-  ohai_debug '  main_username: '$1
-  ohai_debug '  fv_username: '$2
-  ohai_debug '  secure_token_user_username: '$3
-}
-
 display_warning () {
   local i
 

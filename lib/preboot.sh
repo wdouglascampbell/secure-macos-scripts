@@ -27,16 +27,16 @@ configure_preboot_account () {
 
   # check if preboot account exists
   if [[ -n "${PASSWORDS[preboot]}" ]]; then
-    [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 20'
+    log_message 'Checkpoint 20 - preboot account exists'
     # check if preboot account has a Secure Token
     if ! (($SECURE_TOKEN_HOLDERS[(Ie)preboot])); then
-      [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 21'
+      log_message 'Checkpoint 21 - preboot account does not have Secure Token'
       enable_account "preboot"
       enable_secure_token_for_account "preboot" "${PASSWORDS[preboot]}" "$SCRIPT_USER" "${PASSWORDS[$SCRIPT_USER]}"
       disable_account "preboot"
     fi
   else
-    [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 22'
+    log_message 'Checkpoint 22 - preboot account does not exist'
     ohai 'A `preboot` account is required to configure whole disc encryption with preboot authentication.'
     printf '\n'
     ohai 'Please provide a password for the `preboot` account.'

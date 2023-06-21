@@ -21,6 +21,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${(%):-%x}" )" &> /dev/null && pwd )
 . "${SCRIPT_DIR}/lib/filevault.sh"
 . "${SCRIPT_DIR}/lib/globals.sh"
 . "${SCRIPT_DIR}/lib/input.sh"
+. "${SCRIPT_DIR}/lib/logging.sh"
 . "${SCRIPT_DIR}/lib/preboot.sh"
 . "${SCRIPT_DIR}/lib/quoting.sh"
 . "${SCRIPT_DIR}/lib/system.sh"
@@ -28,8 +29,8 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${(%):-%x}" )" &> /dev/null && pwd )
 
 SCRIPT_USER=$(logname)
 
-# set DEBUG to 0 to enable debugging messages
-DEBUG=1
+# set LOG_SECRETS to 0 to include some passwords in logs
+LOG_SECRETS=1
 
 TRAPEXIT() {
   [[ $SUDO_INVALIDATE_ON_EXIT -eq 0 ]] && /usr/bin/sudo -k
@@ -50,66 +51,62 @@ main () {
   get_passwords_for_remaining_login_accounts
   get_filevault_state filevault_state
   check_all_login_accounts_for_problem_passwords
-  [[ $DEBUG -eq 0 ]] && display_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
+  log_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
 
   if [[ "$filevault_state" == "on" ]]; then
-    if [[ $DEBUG -eq 0 ]]; then
-      ohai_debug 'FileVault is Enabled.'
-      ohai_debug 'Checkpoint 1'
-      ohai_debug 'Searching for account with a Secure Token and FileVault access.'
-      ohai_debug 'Searching accounts with FileVault access for ones that also have a Secure Token and a known, good password.'
-    fi
+    log_message 'FileVault is Enabled.'
+    log_message 'Checkpoint 1'
+    log_message 'Searching for account with a Secure Token and FileVault access.'
+    log_message 'Searching accounts with FileVault access for ones that also have a Secure Token and a known, good password.'
 
     other_choices_with_password=()
     other_choices_without_password=()
     unset username
     for username in "${FILEVAULT_ENABLED_ACCOUNTS[@]}"; do
-      [[ $DEBUG -eq 0 ]] && ohai_debug 'username: '$username
+      log_message 'username: '$username
       # if account does not have secure token, skip it
       (($SECURE_TOKEN_HOLDERS[(Ie)$username])) || continue
-      [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 1a - '$username' has Secure Token'
+      log_message 'Checkpoint 1a - '$username' has Secure Token'
 
       # if account has a problem password, skip it
       if (($ACCOUNTS_WITH_PROBLEM_PASSWORDS[(Ie)$username])); then
-        [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 1b - '$username' has problem password'
+        log_message 'Checkpoint 1b - '$username' has problem password'
         other_choices_with_password+=("$username")
         continue
       fi
 
       # if account password has not been provided, skip it
       if [[ -z "${PASSWORDS[$username]}" ]]; then
-        [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 1c - '$username' has no provided password'
+        log_message 'Checkpoint 1c - '$username' has no provided password'
         other_choices_without_password+=("$username") 
         continue
       fi
 
-      [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 1d - '$username' has Secure Token and FileVault access and a known, good password.'
+      log_message 'Checkpoint 1d - '$username' has Secure Token and FileVault access and a known, good password.'
       main_username=$username
       break
     done
-    [[ $DEBUG -eq 0 ]] && display_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
-    [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 2'
+    log_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
+    log_message 'Checkpoint 2'
     if [[ -z "$main_username" ]]; then
-      if [[ $DEBUG -eq 0 ]]; then
-        ohai_debug 'Checkpoint 3'
-        ohai_debug 'Search did not find an account matching search criteria.'
-        ohai_debug 'Searching accounts with FileVault access that have a known but problematic password for ones that also have a Secure Token.'
-        ohai_debug 'other_choices_with_password: '${other_choices_with_password[@]}
-      fi
+      log_message 'Checkpoint 3'
+      log_message 'Search did not find an account matching search criteria.'
+      log_message 'Searching accounts with FileVault access that have a known but problematic password for ones that also have a Secure Token.'
+      log_message 'other_choices_with_password: '${other_choices_with_password[@]}
 
       unset username
       for username in "${other_choices_with_password[@]}"; do
-        [[ $DEBUG -eq 0 ]] && ohai_debug 'username: '$username
+        log_message 'username: '$username
         printf '\n'
         printf "%s\n" 'The password provided for `'$username'` is correct but it contains leading or trailing'
         printf "%s\n" 'spaces. It needs to be changed or some operations will be unsuccesful. In order for it'
         printf "%s\n" 'to be used. Please provide a new password.'
 
         if [[ $username == "preboot" ]]; then
-          [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 3a - preboot account'
+          log_message 'Checkpoint 3a - preboot account'
           get_password_and_confirm "preboot" new_password
         else
-          [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 3b - non-preboot account'
+          log_message 'Checkpoint 3b - non-preboot account'
           get_password_and_confirm "admin" "$username" new_password
         fi
 
@@ -126,26 +123,24 @@ main () {
         main_username=$username
         break
       done
-      [[ $DEBUG -eq 0 ]] && display_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
-      [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 4'
+      log_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
+      log_message 'Checkpoint 4'
       if [[ -z "$main_username" ]]; then
-        if [[ $DEBUG -eq 0 ]]; then
-          ohai_debug 'Checkpoint 5'
-          ohai_debug 'Search did not find an account matching search criteria.'
-          ohai_debug 'Searching accounts with FileVault access where password is unknown for ones that also have a Secure Token.'
-          ohai_debug 'other_choices_without_password: '${other_choices_without_password[@]}
-        fi
+        log_message 'Checkpoint 5'
+        log_message 'Search did not find an account matching search criteria.'
+        log_message 'Searching accounts with FileVault access where password is unknown for ones that also have a Secure Token.'
+        log_message 'other_choices_without_password: '${other_choices_without_password[@]}
 
         if [[ ${#other_choices_without_password} -gt 0 ]]; then
           if [[ ${#other_choices_without_password} -eq 1 ]]; then
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 5a'
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'There is one account that has FileVault access and a Secure Token but with no known password.'
+            log_message 'Checkpoint 5a'
+            log_message 'There is one account that has FileVault access and a Secure Token but with no known password.'
             printf "\n"
             printf "%s\n" "The password for the following account is needed so that some of the operations can"
             printf "%s\n" "complete successfully."
           else
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 5b'
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'There are multiple accounts that have FileVault access and a Secure Token but with no known password.'
+            log_message 'Checkpoint 5b'
+            log_message 'There are multiple accounts that have FileVault access and a Secure Token but with no known password.'
             printf "\n"
             printf "%s\n" "The password for one of the following accounts is needed so that some of the operations"
             printf "%s\n" "can complete successfully."
@@ -153,10 +148,10 @@ main () {
           
           while true; do
             if [[ ${#other_choices_without_password} -eq 1 ]]; then
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 5c'
+              log_message 'Checkpoint 5c'
               username=${other_choices_without_password[1]}
             else
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 5d'
+              log_message 'Checkpoint 5d'
               PS3="Select account: "
               select_with_default other_choices_without_password "" username
             fi
@@ -165,10 +160,10 @@ main () {
             printf "%s\n" 'Please provide password for `'$username'`.'
             if [[ $username == "preboot" ]]; then
               get_account_password "preboot" password "verify"
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 5e - preboot account'
+              log_message 'Checkpoint 5e - preboot account'
             else
               get_account_password "admin" "$username" password "verify" 
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 5f - non-preboot account'
+              log_message 'Checkpoint 5f - non-preboot account'
             fi
     
             has_no_leading_trailing_whitespace "$password" && printf '\n' && break
@@ -179,10 +174,10 @@ main () {
 
             if [[ $username == "preboot" ]]; then
               get_password_and_confirm "preboot" new_password
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 5g - preboot account'
+              log_message 'Checkpoint 5g - preboot account'
             else
               get_password_and_confirm "admin" "$username" new_password
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 5h - non-preboot account'
+              log_message 'Checkpoint 5h - non-preboot account'
             fi
 
             printf "\n"
@@ -194,7 +189,7 @@ main () {
             break
           done
 
-          [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 5i'
+          log_message 'Checkpoint 5i'
           PASSWORDS[$username]=$password
 
           # account no longer requires disabling since we have a password for it
@@ -202,47 +197,45 @@ main () {
 
           main_username=$username
         fi
-        [[ $DEBUG -eq 0 ]] && display_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
-        [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 6'
+        log_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
+        log_message 'Checkpoint 6'
         if [[ -z "$main_username" ]]; then
-          if [[ $DEBUG -eq 0 ]]; then
-            ohai_debug 'Checkpoint 7'
-            ohai_debug 'Search did not find an account matching search criteria.'
-            ohai_debug 'Searching accounts with FileVault access for ones with a known, goood password.'
-          fi    
+          log_message 'Checkpoint 7'
+          log_message 'Search did not find an account matching search criteria.'
+          log_message 'Searching accounts with FileVault access for ones with a known, goood password.'
 
           other_choices_without_password=()
           unset username
           for username in "${FILEVAULT_ENABLED_ACCOUNTS[@]}"; do
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'username: '$username
+            log_message 'username: '$username
             (($ACCOUNTS_WITH_PROBLEM_PASSWORDS[(Ie)$username])) && continue
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 7a - password does not have problems'
+            log_message 'Checkpoint 7a - password does not have problems'
             if [[ -z "${PASSWORDS[$username]}" ]]; then
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 7b - actually, there is no password provided for this username'
+              log_message 'Checkpoint 7b - actually, there is no password provided for this username'
               other_choices_without_password+=("$username")
               continue
             fi
 
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 7c - account has FileVault access and a known, good password'
+            log_message 'Checkpoint 7c - account has FileVault access and a known, good password'
             fv_username=$username
             break
           done
 
-          [[ $DEBUG -eq 0 ]] && display_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
-          [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 8'
+          log_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
+          log_message 'Checkpoint 8'
           if [[ -z "$fv_username" ]]; then
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 9'
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'Search did not find an account matching search criteria.'
+            log_message 'Checkpoint 9'
+            log_message 'Search did not find an account matching search criteria.'
             if [[ ${#other_choices_without_password} -gt 0 ]]; then
               if [[ ${#other_choices_without_password} -eq 1 ]]; then
-                [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 9a'
-                [[ $DEBUG -eq 0 ]] && ohai_debug 'There is one account that has FileVault access but with no known password.'
+                log_message 'Checkpoint 9a'
+                log_message 'There is one account that has FileVault access but with no known password.'
                 printf "\n"
                 printf "%s\n" "The password for the following account is needed so that some of the operations can"
                 printf "%s\n" "complete successfully."
               else
-                [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 9b'
-                [[ $DEBUG -eq 0 ]] && ohai_debug 'There are multiple accounts that have FileVault access but with no known password.'
+                log_message 'Checkpoint 9b'
+                log_message 'There are multiple accounts that have FileVault access but with no known password.'
                 printf "\n"
                 printf "%s\n" "The password for one of the following accounts is needed so that some of the operations"
                 printf "%s\n" "can complete successfully."
@@ -250,10 +243,10 @@ main () {
 
               while true; do
                 if [[ ${#other_choices_without_password} -eq 1 ]]; then
-                  [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 9c'
+                  log_message 'Checkpoint 9c'
                   username=${other_choices_without_password[1]}
                 else
-                  [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 9d'
+                  log_message 'Checkpoint 9d'
                   PS3="Select account: "
                   select_with_default other_choices_without_password "" username
                 fi
@@ -262,10 +255,10 @@ main () {
                 printf "%s\n" 'Please provide password for `'$username'`.'
                 if [[ $username == "preboot" ]]; then
                   get_account_password "preboot" password "verify"
-                  [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 9e'
+                  log_message 'Checkpoint 9e'
                 else
                   get_account_password "admin" "$username" password "verify" 
-                  [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 9f'
+                  log_message 'Checkpoint 9f'
                 fi
                 PASSWORDS[$username]=$password
     
@@ -273,63 +266,61 @@ main () {
                 ACCOUNTS_TO_DISABLE=("${(@)ACCOUNTS_TO_DISABLE:#${username}}")
 
                 has_no_leading_trailing_whitespace "$password" && printf '\n' &&  break
-                [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 9g'
+                log_message 'Checkpoint 9g'
                 display_error 'Unfortunately this password while correct contains leading or trailing spaces.  Please select a different account to try.'
                 ACCOUNTS_WITH_PROBLEM_PASSWORDS+=("$username")
                 other_choices_without_password=("${(@)other_choices_without_password:#${username}}")
                 if [[ ${#other_choices_without_password} -eq 0 ]]; then
-                  [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 9h'
+                  log_message 'Checkpoint 9h'
                   display_error 'All of the accounts with FileVault access have a password with leading or trailing spaces but do not have a Secure Token so there is no way to change the password.'
                   abort 'Oops. Unfortunately there is no way to resolve this issue in a non-destructive way.'
                 fi
               done
 
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 9i'
+              log_message 'Checkpoint 9i'
               fv_username=$username
             else
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 9j'
+              log_message 'Checkpoint 9j'
               abort 'Oops! No accounts have FileVault access. This should never happen.'
             fi
           fi
 
-          if [[ $DEBUG -eq 0 ]]; then
-            display_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
-            ohai_debug 'Checkpoint 10'
-            ohai_debug '`'$fv_username'` account has FileVault access and has been selected to administrate FileVault access.'
-            ohai_debug 'Searching accounts with a Secure Token for ones with a known, goood password.'
-          fi
+          log_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
+          log_message 'Checkpoint 10'
+          log_message '`'$fv_username'` account has FileVault access and has been selected to administrate FileVault access.'
+          log_message 'Searching accounts with a Secure Token for ones with a known, goood password.'
 
           other_choices_without_password=()
           unset username
           for username in "${SECURE_TOKEN_HOLDERS[@]}"; do
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'username: '$username
+            log_message 'username: '$username
             (($ACCOUNTS_WITH_PROBLEM_PASSWORDS[(Ie)$username])) && continue
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 10a - account does not have problem password'
+            log_message 'Checkpoint 10a - account does not have problem password'
             if [[ -z "${PASSWORDS[$username]}" ]]; then
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 10b - actually, account does not have a password'
+              log_message 'Checkpoint 10b - actually, account does not have a password'
               other_choices_without_password+=("$username")
               continue
             fi
 
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 10c - account has Secure Token'
+            log_message 'Checkpoint 10c - account has Secure Token'
             secure_token_user_username=$username
             break
           done
-          [[ $DEBUG -eq 0 ]] && display_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
-          [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 11'
+          log_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
+          log_message 'Checkpoint 11'
           if [[ -z "$secure_token_user_username" ]]; then
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 12'
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'Search did not find an account matching search criteria.'
+            log_message 'Checkpoint 12'
+            log_message 'Search did not find an account matching search criteria.'
             if [[ ${#other_choices_without_password} -gt 0 ]]; then
               if [[ ${#other_choices_without_password} -eq 1 ]]; then
-                [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 12a'
-                [[ $DEBUG -eq 0 ]] && ohai_debug 'There is one account that has a Secure Token but with no known password.'
+                log_message 'Checkpoint 12a'
+                log_message 'There is one account that has a Secure Token but with no known password.'
                 printf "\n"
                 printf "%s\n" "The password for the following account is needed so that some of the operations can"
                 printf "%s\n" "complete successfully."
               else
-                [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 12b'
-                [[ $DEBUG -eq 0 ]] && ohai_debug 'There are multiple accounts that have a Secure Token but with no known password.'
+                log_message 'Checkpoint 12b'
+                log_message 'There are multiple accounts that have a Secure Token but with no known password.'
                 printf "\n"
                 printf "%s\n" "The password for one of the following accounts is needed so that some of the operations"
                 printf "%s\n" "can complete successfully."
@@ -337,10 +328,10 @@ main () {
 
               while true; do
                 if [[ ${#other_choices_without_password} -eq 1 ]]; then
-                  [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 12c'
+                  log_message 'Checkpoint 12c'
                   username=${other_choices_without_password[1]}
                 else
-                  [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 12d'
+                  log_message 'Checkpoint 12d'
                   PS3="Select account: "
                   select_with_default other_choices_without_password "" username
                 fi
@@ -349,10 +340,10 @@ main () {
                 printf "%s\n" 'Please provide password for `'$username'`.'
                 if [[ $username == "preboot" ]]; then
                   get_account_password "preboot" password "verify"
-                  [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 12e - preboot account'
+                  log_message 'Checkpoint 12e - preboot account'
                 else
                   get_account_password "admin" "$username" password "verify" 
-                  [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 12f - non-preboot account'
+                  log_message 'Checkpoint 12f - non-preboot account'
                 fi
                 PASSWORDS[$username]=$password
 
@@ -360,32 +351,30 @@ main () {
                 ACCOUNTS_TO_DISABLE=("${(@)ACCOUNTS_TO_DISABLE:#${username}}")
                 
                 has_no_leading_trailing_whitespace "$password" && printf '\n' && break
-                [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 12g'
+                log_message 'Checkpoint 12g'
                 display_error 'Unfortunately this password while correct contains leading or trailing spaces.  Please select a different account to try.'
                 ACCOUNTS_WITH_PROBLEM_PASSWORDS+=("$username")
                 other_choices_without_password=("${(@)other_choices_without_password:#${username}}")
                 if [[ ${#other_choices_without_password} -eq 0 ]]; then
-                  [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 12h'
+                  log_message 'Checkpoint 12h'
                   display_error 'All of the accounts with a Secure Token have a password with leading or trailing spaces but do not have FileVault access so there is no way to change the password.'
                   abort 'Oops. Unfortunately there is no way to resolve this issue in a non-destructive way.'
                 fi
               done
 
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 12i'
+              log_message 'Checkpoint 12i'
               secure_token_user_username=$username
             else
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 12j'
+              log_message 'Checkpoint 12j'
               abort 'Oops! No accounts have a Secure Token.  This can happen in rare circumstances but unfortunately there is no way to resolve this issue in a non-destructive way.'
             fi
           fi
 
-          if [[ $DEBUG -eq 0 ]]; then
-            display_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
-            ohai_debug 'Checkpoint 13'
-            ohai_debug 'Adding FileVault access to account with only Secure Token access.'
-            ohai_debug 'secure_token_user_username password: '${PASSWORDS[$secure_token_user_username]}
-            ohai_debug 'fv_username password: '${PASSWORDS[$fv_username]}
-          fi
+          log_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
+          log_message 'Checkpoint 13'
+          log_message 'Adding FileVault access to account with only Secure Token access.'
+          [[ $LOG_SECRETS -eq 0 ]] && log_message 'secure_token_user_username password: '${PASSWORDS[$secure_token_user_username]}
+          [[ $LOG_SECRETS -eq 0 ]] && log_message 'fv_username password: '${PASSWORDS[$fv_username]}
           [[ $fv_username == "preboot" || $secure_token_user_username == "preboot" ]] && enable_account "preboot"
           grant_account_filevault_access "$secure_token_user_username" "${PASSWORDS[$secure_token_user_username]}" "$fv_username" "${PASSWORDS[$fv_username]}"
           [[ $fv_username == "preboot" || $secure_token_user_username == "preboot" ]] && disable_account "preboot"
@@ -395,53 +384,49 @@ main () {
       fi
     fi
   else
-    if [[ $DEBUG -eq 0 ]]; then
-      ohai_debug 'Checkpoint 14'
-      ohai_debug 'FileVault is Disabled.'
-      ohai_debug 'Searching for account with a Secure Token and FileVault access.'
-      ohai_debug 'Searching accounts with a Secure Token and FileVault access for ones with a known, good password.'
-    fi
+    log_message 'Checkpoint 14'
+    log_message 'FileVault is Disabled.'
+    log_message 'Searching for account with a Secure Token and FileVault access.'
+    log_message 'Searching accounts with a Secure Token and FileVault access for ones with a known, good password.'
     
     other_choices_with_password=()
     other_choices_without_password=()
     unset username
     for username in "${FILEVAULT_ENABLED_ACCOUNTS[@]}"; do
-      [[ $DEBUG -eq 0 ]] && ohai_debug 'username: '$username
+      log_message 'username: '$username
       # if account does not have secure token, skip it
       (($SECURE_TOKEN_HOLDERS[(Ie)$username])) || continue
-      [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 14a - account has secure token'
+      log_message 'Checkpoint 14a - account has secure token'
 
       # if account has a problem password, skip it
       if (($ACCOUNTS_WITH_PROBLEM_PASSWORDS[(Ie)$username])); then
-        [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 14b - account has problem password'
+        log_message 'Checkpoint 14b - account has problem password'
         other_choices_with_password+=("$username")
         continue
       fi
 
       # if account password has not been provided, skip it
       if [[ -z "${PASSWORDS[$username]}" ]]; then
-        [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 14c - actually, account does not have a provided password'
+        log_message 'Checkpoint 14c - actually, account does not have a provided password'
         other_choices_without_password+=("$username") 
         continue
       fi
 
-      [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 14d - account has Secure Token and FileVault access and a known, good password'
+      log_message 'Checkpoint 14d - account has Secure Token and FileVault access and a known, good password'
       main_username=$username
       break
     done
-    [[ $DEBUG -eq 0 ]] && display_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
-    [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 15'
+    log_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
+    log_message 'Checkpoint 15'
     if [[ -z "$main_username" ]]; then
-      if [[ $DEBUG -eq 0 ]]; then
-        ohai_debug 'Checkpoint 16'
-        ohai_debug 'Search did not find an account matching search criteria.'
-        ohai_debug 'Checking if any accounts with a Secure Token and FileVault access have a problematic password to prompt user to change it.'
-        ohai_debug 'other_choices_with_password: '${other_choices_with_password[@]}
-      fi
+      log_message 'Checkpoint 16'
+      log_message 'Search did not find an account matching search criteria.'
+      log_message 'Checking if any accounts with a Secure Token and FileVault access have a problematic password to prompt user to change it.'
+      log_message 'other_choices_with_password: '${other_choices_with_password[@]}
 
       unset username
       for username in "${other_choices_with_password[@]}"; do
-        [[ $DEBUG -eq 0 ]] && ohai_debug 'username: '$username
+        log_message 'username: '$username
         printf '\n'
         printf "%s\n" 'The password provided for `'$username'` is correct but it contains leading or trailing'
         printf "%s\n" 'spaces. It needs to be changed or some operations will be unsuccesful. In order for it'
@@ -449,10 +434,10 @@ main () {
 
         if [[ $username == "preboot" ]]; then
           get_password_and_confirm "preboot" new_password
-          [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 16a - preboot account'
+          log_message 'Checkpoint 16a - preboot account'
         else
           get_password_and_confirm "admin" "$username" new_password
-          [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 16b - non-preboot account'
+          log_message 'Checkpoint 16b - non-preboot account'
         fi
 
         printf "\n"
@@ -469,25 +454,23 @@ main () {
         break
       done
 
-      [[ $DEBUG -eq 0 ]] && display_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
-      [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 17'
+      log_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
+      log_message 'Checkpoint 17'
       if [[ -z "$main_username" ]]; then
-        if [[ $DEBUG -eq 0 ]]; then
-          ohai_debug 'Checkpoint 18'
-          ohai_debug 'No accounts with a Secure Token and FileVault access and a known, problematic password where found.'
-          ohai_debug 'other_choices_without_password: '${other_choices_without_password[@]}
-        fi
+        log_message 'Checkpoint 18'
+        log_message 'No accounts with a Secure Token and FileVault access and a known, problematic password where found.'
+        log_message 'other_choices_without_password: '${other_choices_without_password[@]}
 
         if [[ ${#other_choices_without_password} -gt 0 ]]; then
           if [[ ${#other_choices_without_password} -eq 1 ]]; then
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 18a'
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'There is one account that has a Secure Token but with no known password.'
+            log_message 'Checkpoint 18a'
+            log_message 'There is one account that has a Secure Token but with no known password.'
             printf "\n"
             printf "%s\n" "The password for the following account is needed so that some of the operations can"
             printf "%s\n" "complete successfully."
           else
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 18b'
-            [[ $DEBUG -eq 0 ]] && ohai_debug 'There are multiple accounts that have a Secure Token but with no known password.'
+            log_message 'Checkpoint 18b'
+            log_message 'There are multiple accounts that have a Secure Token but with no known password.'
             printf "\n"
             printf "%s\n" "The password for one of the following accounts is needed so that some of the operations"
             printf "%s\n" "can complete successfully."
@@ -495,10 +478,10 @@ main () {
 
           while true; do
             if [[ ${#other_choices_without_password} -eq 1 ]]; then
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 18c'
+              log_message 'Checkpoint 18c'
               username=${other_choices_without_password[1]}
             else
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 18d'
+              log_message 'Checkpoint 18d'
               PS3="Select account: "
               select_with_default other_choices_without_password "" username
             fi
@@ -507,10 +490,10 @@ main () {
             printf "%s\n" 'Please provide password for `'$username'`.'
             if [[ $username == "preboot" ]]; then
               get_account_password "preboot" password "verify"
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 18e'
+              log_message 'Checkpoint 18e'
             else
               get_account_password "admin" "$username" password "verify"
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 18f'
+              log_message 'Checkpoint 18f'
             fi
             PASSWORDS[$username]=$password
 
@@ -523,10 +506,10 @@ main () {
 
             if [[ $username == "preboot" ]]; then
               get_password_and_confirm "preboot" new_password
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 18g - preboot account'
+              log_message 'Checkpoint 18g - preboot account'
             else
               get_password_and_confirm "admin" "$username" new_password
-              [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 18h - non-preboot account'
+              log_message 'Checkpoint 18h - non-preboot account'
             fi
 
             printf "\n"
@@ -539,45 +522,42 @@ main () {
           done
 
           main_username=$username
-          [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 18i'
+          log_message 'Checkpoint 18i'
         else
-          [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 18j'
+          log_message 'Checkpoint 18j'
           abort 'Oops! No accounts have a Secure Token.  This can happen in rare circumstances but unfortunately there is no way to resolve this issue in a non-destructive way.'
         fi
       fi
     fi
   fi
 
-  if [[ $DEBUG -eq 0 ]]; then
-    ohai_debug 'Checkpoint 19'
-    display_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
-    ohai_debug 'preboot password: '${PASSWORDS[preboot]}
-  fi
+  log_message 'Checkpoint 19'
+  log_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
+  [[ $LOG_SECRETS -eq 0 ]] && log_message 'preboot password: '${PASSWORDS[preboot]}
   update_secure_token_holder_list
   enable_secure_token_for_all_accounts $main_username
   confirm_all_login_account_passwords_meet_requirements
   update_secure_token_holder_list
   enable_secure_token_for_all_accounts $main_username
 
-  [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 26'
-  [[ $DEBUG -eq 0 ]] && display_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
+  log_message 'Checkpoint 26'
+  log_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
   if [[ $EXTREME -eq 0 ]]; then
-    [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 27'
+    log_message 'Checkpoint 27'
     configure_preboot_account
     configure_filevault_extreme $main_username
   else
-    [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 28'
+    log_message 'Checkpoint 28'
     [[ "$filevault_state" == "off" ]] && enable_filevault $main_username
-    [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 29'
+    log_message 'Checkpoint 29'
     enable_filevault_access_for_all_accounts $main_username
     is_account_exist "preboot" && remove_account "preboot" && ACCOUNTS_TO_DISABLE=("${(@)ACCOUNTS_TO_DISABLE:#preboot}")
     show_others_option_from_login_screen
   fi
 
-  [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 30'
-  [[ $DEBUG -eq 0 ]] && display_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
-  # disable accounts that passwords were not provided for
-  [[ $DEBUG -eq 0 ]] && ohai_debug "Disabling accounts that passwords weren't provided for."
+  log_message 'Checkpoint 30'
+  log_variable_state "$main_username" "$fv_username" "$secure_token_user_username"
+  ohai "Disabling accounts that passwords weren't provided for."
   unset username
   for username in "${ACCOUNTS_TO_DISABLE[@]}"; do
     disable_account "$username"
@@ -586,6 +566,8 @@ main () {
 
 typeset choice
 typeset -a security_levels=("EXTREME" "HIGH")
+
+get_fullpath_to_logfile LOGFILE
 
 prepare_display_environment
 check_run_command_as_root

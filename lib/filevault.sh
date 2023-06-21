@@ -32,7 +32,7 @@ configure_filevault_extreme () {
   case "$filevault_state" in
 
   "off")
-    [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 23'
+    log_message 'Checkpoint 23'
     ohai "FileVault is Disabled. Proceeding with encryption..."
     printf '\n'
     display_message "Click 'OK' button in response to the dialog that appears stating that 'fdesetup would like to enable FileVault.'"
@@ -45,12 +45,12 @@ configure_filevault_extreme () {
     ;;
 
   "on")
-    [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 24'
+    log_message 'Checkpoint 24'
     ohai 'FileVault is Enabled.' 
 
     # ensure preboot account can unlock FileVault
     if ! (($FILEVAULT_ENABLED_ACCOUNTS[(Ie)preboot])); then
-      [[ $DEBUG -eq 0 ]] && ohai_debug 'Checkpoint 25'
+      log_message 'Checkpoint 25'
       ohai '`preboot` account does not have permissions to unlock FileVault.'
 
       enable_account "preboot"
@@ -94,7 +94,7 @@ EOF
 }
 
 get_filevault_account_list () {
-  [[ $DEBUG -eq 0 ]] && ohai_debug 'Getting list of accounts with FileVault access.'
+  log_message 'Getting list of accounts with FileVault access.'
 
   FILEVAULT_ENABLED_ACCOUNTS=$(
     execute_sudo "fdesetup" "list" | \
@@ -107,7 +107,7 @@ get_filevault_account_list () {
 get_filevault_state () {
   local _state=$1
 
-  [[ $DEBUG -eq 0 ]] && ohai_debug 'Getting FileVault state.'
+  log_message 'Getting FileVault state.'
 
   if [[ $(fdesetup status | grep "FileVault" | grep "On" | wc -l) -eq 1 ]]; then
     if [[ $(fdesetup status | grep "^Decryption in progress" | wc -l) -eq 1 ]]; then
@@ -146,7 +146,7 @@ enable_filevault_access_for_all_accounts () {
     (($DISABLED_ACCOUNTS[(Ie)$username])) && continue
 
     if ! (($FILEVAULT_ENABLED_ACCOUNTS[(Ie)$username])); then
-      [[ $DEBUG -eq 0 ]] && ohai_debug 'Granting FileVault access for account, `'$username'`'
+      log_message 'Granting FileVault access for account, `'$username'`'
       [[ "$1" == "preboot" ]] && enable_account "preboot"
       grant_account_filevault_access "$username" "${PASSWORDS[$username]}" "$1" "${PASSWORDS[$1]}"
       [[ "$1" == "preboot" ]] && disable_account "preboot"
