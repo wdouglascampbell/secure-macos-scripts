@@ -63,6 +63,7 @@ confirm_all_login_account_passwords_meet_requirements () {
 disable_account () {
   execute_sudo "pwpolicy" "-u" "$1" "-disableuser" >/dev/null 2>&1
   DISABLED_ACCOUNTS+=("$1")
+  force_failed_login "preboot"
 }
 
 enable_account () {
@@ -145,6 +146,30 @@ ensure_script_user_has_secure_token_enable () {
       [[ $username == "preboot" ]] && disable_account "preboot"
     fi
   fi
+}
+
+force_failed_login () {
+  # Make a failed login attempt.
+
+  # This is only necessary because Apple does not honor the disabling of an
+  # account on the first reboot. If, however, a login attempt, even one using a
+  # wrong password, is attempted, prior to rebooting, the disabling of the
+  # account is properly honored at the macOS account login screen.
+
+  execute "expect" >/dev/null << EOF
+    spawn su $1
+    expect {
+      "Password:" {
+        send "notapassword\r"
+      }
+    }
+    expect {
+      "su: Sorry" {
+        exit 0
+      }
+    }
+    exit 0
+EOF
 }
 
 get_account_realname () {
