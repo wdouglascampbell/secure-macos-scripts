@@ -121,8 +121,13 @@ get_filevault_state () {
 }
 
 enable_filevault () {
+  typeset is_account_enabled
+
+  is_account_enabled=$(pwpolicy -u $1 authentication-allowed | grep -c "is disabled")
+  enable_account "$1"
   add_user_to_admin_group "$1"
   encrypt_using_fdesetup_with_expect "$1" "${PASSWORDS[$1]}"
+  [[ $is_account_enabled -ne 0 ]] && disable_account "$1"
   ! (($ADMINS[(Ie)$1])) && remove_user_from_admin_group "$1"
 }
 

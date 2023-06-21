@@ -39,7 +39,7 @@ confirm_all_login_account_passwords_meet_requirements () {
       check_password_func="check_preboot_password_complexity"
     else
       check_password_func="check_password_complexity"
-      [[ $is_account_enabled -ne 0 ]] && enable_account "$username" 
+      enable_account "$username" 
     fi
 
     if ! "$check_password_func" "$password"; then
