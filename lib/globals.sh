@@ -11,6 +11,7 @@ typeset -a LOGIN_ACCOUNTS
 typeset -A PASSWORDS
 typeset -a SECURE_TOKEN_HOLDERS
 
-typeset DEBUG
-typeset SCRIPT_USER
+typeset -i DEBUG
+typeset -i SUDO_INVALIDATE_ON_EXIT
 
+typeset SCRIPT_USER

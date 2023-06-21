@@ -302,6 +302,10 @@ get_login_account_list () {
 }
 
 get_sudo () {
+  # Invalidate sudo timestamp before exiting (if it wasn't active before).
+  [[ -x /usr/bin/sudo ]] && ! /usr/bin/sudo -n -v 2>/dev/null
+  SUDO_INVALIDATE_ON_EXIT=$?
+
   printf "%s" "$1" | sudo -S -l mkdir >/dev/null 2>&1 
 }
 

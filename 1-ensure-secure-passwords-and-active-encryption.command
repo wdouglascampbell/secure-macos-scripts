@@ -31,6 +31,10 @@ SCRIPT_USER=$(logname)
 # set DEBUG to 0 to enable debugging messages
 DEBUG=1
 
+TRAPEXIT() {
+  [[ $SUDO_INVALIDATE_ON_EXIT -eq 0 ]] && /usr/bin/sudo -k
+}
+
 main () {
   typeset filevault_state
   typeset fv_username
@@ -600,12 +604,6 @@ select_with_default security_levels "EXTREME" choice
 ohai 'Getting password for account currently running this script.'
 get_account_password_aux $SCRIPT_USER
 printf '\n'
-
-# Invalidate sudo timestamp before exiting (if it wasn't active before).
-if [[ -x /usr/bin/sudo ]] && ! /usr/bin/sudo -n -v 2>/dev/null
-then
-  trap '/usr/bin/sudo -k' EXIT
-fi
 
 get_sudo "${PASSWORDS[$SCRIPT_USER]}"
 
