@@ -364,7 +364,7 @@ update_secure_token_holder_list () {
   [[ $DEBUG -eq 0 ]] && ohai_debug 'Updating Secure Token Holders list.'
   [[ $DEBUG -eq 0 ]] && ohai_debug '*old* SECURE_TOKEN_HOLDERS = '${SECURE_TOKEN_HOLDERS[@]}
 
-  unset SECURE_TOKEN_HOLDERS
+  SECURE_TOKEN_HOLDERS=()
 
   for username in "${LOGIN_ACCOUNTS[@]}"
   do
