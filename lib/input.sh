@@ -94,7 +94,7 @@ get_input_from_user () {
         if [[ $char == $'\x7F' ]]; then
           [[ ${#input} -eq 0 ]] && char_prompt="" && continue
           char_prompt=$(printf "\b \b")
-          input=${input::-1}
+          input=${input%?}
         else
           char_prompt='*'
           input+="$char"
@@ -228,7 +228,7 @@ select_with_default () {
     # Make sure that the input is either empty or that a valid index was entered.
     [[ -n $defaultitem ]] && [[ -z $index ]] && : ${(P)_selection::=$defaultitem} && break
     (( index >= 1 && index <= ${#${(P)_itemlist}} )) 2>/dev/null || { echo "Invalid selection. Please try again." >&2; continue; }
-    : ${(P)_selection::="${(P)_itemlist: $(( index - 1 )):1}"}
+    : ${(P)_selection::="${(P)${_itemlist}[@]: $(( index - 1 )):1}"}
     break
   done
 }
