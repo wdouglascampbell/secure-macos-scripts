@@ -633,7 +633,6 @@ if [[ $? -eq 0 ]]; then
   display_message "If a dialog appears stating '"'"Terminal" wants access to control "System Events". Allowing control will provide access to documents and data in "System Events", and to perform actions within that app.'"' Please click 'OK'."
   printf '\n'
   display_message "If a dialog appears stating '"'"System Events" would like to access files in your Desktop folder.'"' Please click 'OK'."
-  sleep 5
 
   # deploy temporary script to run at next login that will close the Terminal window
   # and remove all traces of itself from the system.
@@ -645,6 +644,7 @@ kill \$(ps -A | grep -w Terminal.app | grep -v grep | awk '{print \$1}')
 EOF
   chmod +x "${SCRIPT_DIR}/close-terminal.command"
   osascript -e 'tell application "System Events" to make login item at end with properties {path:"'${SCRIPT_DIR}'/close-terminal.command", hidden:false}' >/dev/null 2>&1
+  sleep 5
   execute_sudo "reboot"
 fi
 
