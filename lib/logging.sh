@@ -15,7 +15,7 @@ get_fullpath_to_logfile () {
   prev_run_iteration=$(ls "${SCRIPT_DIR}/log/${logfile_basename}"* | sort -rV | head -n 1 | sed -E "s/.*--([[:digit:]]*)/\1/") 2>/dev/null
   prev_run_iteration=${prev_run_iteration:-0}
 
-  : ${(P)_logfile:="${SCRIPT_DIR}/log/${logfile_basename}$((++prev_run_iteration))"}
+  : ${(P)_logfile::="${SCRIPT_DIR}/log/${logfile_basename}$((++prev_run_iteration))"}
 }
 
 log_message () {
