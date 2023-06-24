@@ -14,5 +14,5 @@ typeset -a SECURE_TOKEN_HOLDERS
 typeset -i LOG_SECRETS
 typeset -i SUDO_INVALIDATE_ON_EXIT
 
-typeset LOGFILE
+typeset LOGFILE=/dev/null
 typeset SCRIPT_USER
