@@ -387,20 +387,20 @@ get_password_for_account_in_list () {
   typeset _password=$3
 
   if [[ ${#${(P)1}} -eq 1 ]]; then
-    : ${(P)_username::=${(P)_other_choices_without_password[1]}}
+    : ${(P)_username::=${${(P)_other_choices_without_password}[1]}}
   else
     PS3="Select account: "
-    select_with_default _other_choices_without_password "" _username
+    select_with_default "$_other_choices_without_password" "" "$_username"
   fi
 
   printf '\n'
-  display_message 'Please provide password for `'$username'`.'
+  display_message 'Please provide password for `'${(P)_username}'`.'
 
   log_message "Getting password for ${(P)_username}"
   if [[ "${(P)_username}" == "preboot" ]]; then
-    get_account_password "preboot" password "verify"
+    get_account_password "preboot" "$_password" "verify"
   else
-    get_account_password "admin" "$username" password "verify"
+    get_account_password "admin" "${(P)_username}" "$_password" "verify"
   fi
 
   PASSWORDS[${(P)_username}]=${(P)_password}
@@ -532,6 +532,7 @@ get_privileged_accounts () {
           log_variable_state "${(P)_full_priv_account}" "${(P)_fv_priv_account}" "${(P)_secure_token_priv_account}"
           if [[ -z "${(P)_secure_token_priv_account}" ]]; then
             log_message 'Checkpoint 12 - Search did not find an account matching search criteria.'
+            log_message 'other_choices_without_password: '${other_choices_without_password[@]}
             if [[ ${#other_choices_without_password} -gt 0 ]]; then
               if [[ ${#other_choices_without_password} -eq 1 ]]; then
                 log_message 'Checkpoint 12a - There is one account that has a Secure Token but with no known password.'
