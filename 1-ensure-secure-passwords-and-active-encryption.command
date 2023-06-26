@@ -123,12 +123,6 @@ else
 fi
 printf "\n"
 
-#execute_sudo "tccutil" "reset" "SystemPolicyDesktopFolder" "com.apple.Terminal"
-#execute_sudo "tccutil" "reset" "SystemPolicyDownloadsFolder" "com.apple.Terminal"
-#execute_sudo "tccutil" "reset" "SystemPolicyDocumentsFolder" "com.apple.Terminal"
-#execute_sudo "tccutil" "reset" "SystemPolicyAllFiles" "com.apple.Terminal"
-#execute_sudo "tccutil" "reset" "SystemPolicyDesktopFolder" "com.apple.SystemEvents"
-
 ask_yes_no "Reboot now? (y/n)"
 if [[ $? -eq 0 ]]; then
   clear

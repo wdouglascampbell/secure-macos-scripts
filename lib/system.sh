@@ -746,8 +746,6 @@ remove_account () {
     log_message "Attempt failed. Waiting 1 second"
     sleep 1
   done
-  #execute_sudo "zsh" "-c" "rm -rf /Users/$1; true"
-  #execute_sudo "rm" "-rf" "/Users/$1"
   popd -q
 }
 
@@ -779,6 +777,14 @@ replace_problem_password_on_account () {
 
   # remove account from ACCOUNTS_WITH_PROBLEM_PASSWORDS
   ACCOUNTS_WITH_PROBLEM_PASSWORDS=("${(@)ACCOUNTS_WITH_PROBLEM_PASSWORDS:#${username}}")
+}
+
+reset_tcc_configuration () {
+  execute_sudo "tccutil" "reset" "SystemPolicyDesktopFolder" "com.apple.Terminal"
+  execute_sudo "tccutil" "reset" "SystemPolicyDownloadsFolder" "com.apple.Terminal"
+  execute_sudo "tccutil" "reset" "SystemPolicyDocumentsFolder" "com.apple.Terminal"
+  execute_sudo "tccutil" "reset" "SystemPolicyAllFiles" "com.apple.Terminal"
+  execute_sudo "tccutil" "reset" "SystemPolicyDesktopFolder" "com.apple.SystemEvents"
 }
 
 show_others_option_from_login_screen () {
