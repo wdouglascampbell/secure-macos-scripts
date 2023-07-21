@@ -1,9 +1,9 @@
 #!/usr/bin/env zsh
 #
 # This script performs the following tasks:
-#  * prompt user for Preboot Authentication password
-#  * prompt user for new Preboot Authentication password
-#  * change Preboot Authentication password
+#  * prompt user for Pre-Boot Authentication password
+#  * prompt user for new Pre-Boot Authentication password
+#  * change Pre-Boot Authentication password
 #
 # Copyright (c) 2023 Doug Campbell. All rights reserved.
 
@@ -43,11 +43,11 @@ main () {
   get_sudo "${PASSWORDS[$SCRIPT_USER]}"
   
   if is_account_exist "preboot"; then
-    ohai 'Getting password for Preboot Authentication account.'
+    ohai 'Getting password for Pre-Boot Authentication account.'
     get_account_password_aux "preboot"
     printf "\n"
 
-    ohai 'Getting new password for Preboot Authentication account.'
+    ohai 'Getting new password for Pre-Boot Authentication account.'
     printf "%s\n" 'Please provide new password for `preboot`.'
     get_password_and_confirm "preboot" new_password
     printf "\n"

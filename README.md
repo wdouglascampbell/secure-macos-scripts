@@ -21,3 +21,15 @@ The **EXTREME** level of security ensures that encryption is active and that onl
 3. Select the security level, **HIGH** or **EXTREME**, that you want to use based on the security at your location.
 4. Follow the displayed instructions and respond to the questions and password requests.
 5. Once the script has finished, you will be prompted to reboot the computer. You are **strongly** encouraged to reboot the computer and go through the new sign in process while these changes are fresh in your mind.
+
+## u1-change-preboot-password.command
+
+This script allows a user to change the password of the "Pre-Boot Authentication", aka preboot, account.
+
+### Running The Script
+
+1.  Double-click the script **u1-change-preboot-password.command**.
+2.  If you are prompted with a dialog asking for permission to allow "Terminal" access to the files in the folder containing the script, click OK.
+3.  Provide the requested passwords as prompted.
+4.  Once the script has finished.  Press Command + Q to close "Terminal".
+
