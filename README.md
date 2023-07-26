@@ -3,8 +3,13 @@ This repository contains a collection of Z shell scripts for securing macOS.
 
 ## Initial Setup
 1. Download the [latest package](https://github.com/wdouglascampbell/secure-macos-scripts/releases/latest). *Note: Download the tar.gz source code.*
-1. Insert a USB drive.
-1. Copy and extract the downloaded source code archive to the USB drive.
+1. Use Finder to open your Downloads folder.
+1. Double-click on the downloaded tar archive to extract its contents.
+1. Press ```control ⌃``` and click on the extracted folder and select “New Terminal at Folder” from the menu.<br /><br />This will open Terminal at the location of the extracted folder.
+
+1. At the shell prompt %, enter the following command to remove the quarantine attribute that is added to all files downloaded from the Internet.<br /><br />```xattr -r -d com.apple.quarantine .```
+
+1. [Optional] Move the extracted folder to your Desktop folder for convenient access.
 
 ## 1-ensure-secure-passwords-and-active-encryption.command
 
