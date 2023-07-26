@@ -51,7 +51,7 @@ This script is used to grant the current user privileges to unlock FileVault.  T
 5.  If any of the updates require the system to restart, proceed with the restart and authenticate using your user account.
 6.  After all updates and required system restarts have completed you need to run the ```u2s-post-update-cleanup.command``` script to restore the system to a secure state.
 
-### ```u2b-post-update-cleanup.command``` (use for for **EXTREME** configurations)
+### ```u2b-post-update-cleanup.command``` (use only for **EXTREME** configurations)
 
 This script is used to remove privileges for unlocking FileVault from the current user.  This is needed for restoring the system to a secure state after system updates have been performed.
 
