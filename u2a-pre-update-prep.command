@@ -56,7 +56,7 @@ main () {
     printf "\n"
     display_message 'Restart the computer if prompted once updates have finished installing.  Note that you may be presented with the option with authenticate using either the current user account or the Pre-Boot Authentication; you should use the current user account to authenticate.'
     printf "\n"
-    display_message 'After the updates have completed and the computer has been restarted (if prompted), you need to restore the computer's security by running the u2b-post-update-clean.command script by double-clicking it in Finder and following the on-screen instructions.' 
+    display_message 'After the updates have completed and the computer has been restarted (if prompted), you need to restore the computer'"'"'s security by running the u2b-post-update-clean.command script by double-clicking it in Finder and following the on-screen instructions.' 
     printf "\n"
     read -s -k '?Press any key to continue.'
     printf "\n\n"
