@@ -42,7 +42,7 @@ This script allows a user to change the password of the "Pre-Boot Authentication
 
 ### ```u2a-pre-update-prep.command``` (use only for **EXTREME** configurations)
 
-This script is used to grant the current user privileges to unlock FileVault.  This is needed for performing system updates.  After system updates are completed the u2b-post-update-cleanup.command script should then be run to restore the system to a secure state.
+This script is used to grant the current user privileges to unlock FileVault.  This is needed for performing system updates.  After system updates are completed the ```u2b-post-update-cleanup.command``` script should then be run to restore the system to a secure state.  Some other system tasks may also require this script to be run in order to work.  Generally, this script may need to be run if you are prompted for the current user password and after entering it the system fails to proceed with performing the authorized task.  This script also may need to be run if you are prompted for the preboot password when performing a system task so that instead the system will prompt you for the current user password for authorization.
 
 1.  Double-click the script ```u2a-pre-update-prep.command```.
 2.  If you are prompted with a dialog asking for permission to allow "Terminal" access to the files in the folder containing the script, click OK.
@@ -59,5 +59,3 @@ This script is used to remove privileges for unlocking FileVault from the curren
 2.  If you are prompted with a dialog asking for permission to allow "Terminal" access to the files in the folder containing the script, click OK.
 3.  Provide the requested passwords as prompted.
 4.  Once the script has finished, the system will have been restored to a secure state.
-
-
