@@ -59,3 +59,12 @@ This script is used to remove privileges for unlocking FileVault from the curren
 2.  If you are prompted with a dialog asking for permission to allow "Terminal" access to the files in the folder containing the script, click OK.
 3.  Provide the requested passwords as prompted.
 4.  Once the script has finished, the system will have been restored to a secure state.
+
+### ```u3-remove-preboot-from-system.command``` (use only for **EXTREME** configurations)
+
+This script is used to remove the Pre-Boot Authentication account from a system.  If FileVault is enabled, it will remain enabled but all user accounts for which a password has been provided will be granted privileges to unlock FileVault.  User accounts for which a password is not provided will not be granted privileges to unlocking FileVault and will be disabled from logging in.
+
+1.  Double-click the script ```u3-remove-preboot-from-system.command```.
+2.  If you are prompted with a dialog asking for permission to allow "Terminal" access to the files in the folder containing the script, click OK.
+3.  Provide the requested passwords as prompted.
+4.  Once the script has finished, the Pre-Boot Authentication account will no longer exist.
