@@ -71,6 +71,9 @@ disable_filevault () {
 
   quote_string_for_use_within_expect_tcl_script_double_quotes "$2" password
 
+  ohai "Disabling FileVault..."
+  printf '\n'
+
   execute_sudo "expect" >/dev/null << EOF
     spawn fdesetup disable -user $1
     expect {
