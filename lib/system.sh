@@ -112,11 +112,7 @@ ensure_script_user_has_secure_token_enable () {
   if ! (($SECURE_TOKEN_HOLDERS[(Ie)$SCRIPT_USER)); then
     for username in "${SECURE_TOKEN_HOLDERS[@]}"
     do
-      ! (($PASSWORDS[(Ie)$username])) && secure_token_holders_missing_password+=("$username") && continue
-
-   # check whether password begins or ends in spaces or it won't work for us!
-   # or actually the way we enable the secure token won't work with such passwords I think
-   # maybe I should change how I enable it to use expect?
+      ! ((${+PASSWORDS[$username]})) && secure_token_holders_missing_password+=("$username") && continue
 
       [[ $username == "preboot" ]] && enable_account "preboot"
       add_user_to_admin_group "$username"
