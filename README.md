@@ -28,6 +28,17 @@ The **EXTREME** level of security ensures that encryption is active and that onl
 4. Follow the displayed instructions and respond to the questions and password requests.
 5. Once the script has finished, you will be prompted to reboot the computer. You are **strongly** encouraged to reboot the computer and go through the new sign in process while these changes are fresh in your mind.
 
+### ```2-configure-security-settings.command```
+
+This script ensures that both system-wide and user-specific settings are set to values appropriate for keeping the system secure.
+
+#### Running The Script
+
+1. Double-click the script ```2-configure-security-settings.command```.
+2. If you are prompted with a dialog asking for permission to allow "Terminal" access to the files in the folder containing the script, click OK.
+3. Provide the requested passwords as prompted and follow the displayed instructions.
+4. Press any key after reviewing the scripts results to close "Terminal".
+
 ## Utility Scripts
 ### ```u1-change-preboot-password.command``` (use only for **EXTREME** configurations)
 
