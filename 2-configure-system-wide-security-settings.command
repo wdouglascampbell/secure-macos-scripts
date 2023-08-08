@@ -31,10 +31,7 @@ TRAPEXIT() {
 }
 
 main () {
-  #typeset choice
   typeset temp_exports_created=1
-  typeset username
-  #typeset -a security_levels=("EXTREME" "HIGH")
 
   get_fullpath_to_logfile LOGFILE
   
@@ -42,24 +39,13 @@ main () {
   check_run_command_as_root
   check_run_command_as_admin
   
-  #printf "%s\n" "A security level choice must be made."
-  #PS3="Select security level: "
-  #select_with_default security_levels "EXTREME" choice
-  #[[ $choice == "EXTREME" ]] && EXTREME=0 || EXTREME=1
-  #
-  #[[ $EXTREME -eq 0 ]] && ohai 'Current Security Level: EXTREME' || ohai 'Current Security Level: HIGH'
-
   # get script user password
-  # note: we get this separately because we need to have sudo prior to attempting to verify
-  #       the remaining accounts just in case they are currently disabled.
   ohai 'Getting password for account currently running this script.'
   get_account_password_aux $SCRIPT_USER
   printf '\n'
   
   get_sudo "${PASSWORDS[$SCRIPT_USER]}"
   
-  #check_for_security_level_downgrade_attempt
-
   # Get major OS version (uses uname -r and zsh parameter substitution)
   # osvers is 20 for 11.0, 21 for 12.0, 22 for 13.0, etc.
   osversionlong=$(uname -r)
@@ -134,37 +120,48 @@ main () {
   ohai "Enabling automatic updates of App Store apps."
   execute_sudo "defaults" "write" "/Library/Preferences/com.apple.commerce" "AutoUpdate" "-bool" "yes"
 
-  get_login_account_list
-  LOGIN_ACCOUNTS=("${(@)LOGIN_ACCOUNTS:#preboot}")
-  get_passwords_for_remaining_login_accounts
+  ohai "Disabling sharing crash and usage data with app developers."
+  execute_sudo "defaults" "write" "/Library/Application Support/CrashReporter/DiagnosticMessagesHistory.plist" "ThirdPartyDataSubmit" "-int" "0"
 
-  for username in "${LOGIN_ACCOUNTS[@]}"; do
-    ohai "Securing User-Specific Settings for $username."
+  ohai "Disabling Mac Analytics."
+  execute_sudo "defaults" "write" "/Library/Application Support/CrashReporter/DiagnosticMessagesHistory.plist" "AutoSubmit" "-int" "0"
 
-    # disable account if no password was provided
-    if ! ((${+PASSWORDS[$username]})); then
-      display_warning "No password was provided.  Account will be disabled."
-      printf '\n'
-      disable_account "$username"
-      continue
-    fi
+  display_message 'System Settings (System Preferences) will be opened.'
+  display_message 'Please perform the following manual steps.'
+  display_message '1.  Click the lock icon and enter your password.'
+  display_message '2.  Click the "System Services" Details button.'
+  display_message '3.  Move the slider for "Location-based alerts" to the off position. (macOS 12 Monterey and later)'
+  display_message '4.  Move the slider for "Location-based suggestions" to the off position.'
+  display_message '5.  Move the slider for "Significant Locations" to the off position.'
+  display_message '6.  Move the slider for "Mac Analytics" to the off position. (macOS 13 Ventura and later)'
+  display_message '7.  Click Done.'
+  display_message '8.  Quit System Settings (System Preferences).'
+  printf '\n'
+  display_message 'Once you are done, return to this screen to continue.'
 
-    ohai "Configuring screensaver to activate after 10 minutes of inactivity."
-    execute_sudo "-u$username" "defaults" "-currentHost" "write" "com.apple.screensaver" "idleTime" "600"
+  open "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices"
 
-    ohai "Requiring password to unlock once sleep or screensaver has been active for 5 seconds."
-    execute_sudo "-u$username" "sysadminctl" "-screenLock" "5 seconds" "-password" "${PASSWORDS[$username]}"
+  printf '\n'
+  read -s -k '?Press any key to continue.'
 
-    ohai "Disabling Bluetooth sharing."
-    execute_sudo "-u$username" "defaults" "-currentHost" "write" "com.apple.Bluetooth" "PrefKeyServicesEnabled" "-bool" "no"
-
-    # Prevent the creation of .DS_Store files on network volumes
-    # Note: This setting will not take effect until after logout
-    ohai "Preventing creation of .DS_Store files."
-    execute_sudo "-u$username" "defaults" "write" "com.apple.desktopservices" "DSDontWriteNetworkStores" "-bool" "yes"
+  # macOS 13 (Ventura) and later
+  if [[ $true_os_version -ge 13 ]]; then
+    # Note: This setting applies for all accounts so if any user signed in with an Apple ID changes it
+    #       the change will apply to all accounts.
+    display_message 'System Settings (System Preferences) will be opened.'
+    display_message 'Please perform the following manual steps.'
+    display_message '1.  Click "Analytics & Improvements".'
+    display_message '2.  If a slider is present for "Share iCloud Analytics", move it to the off positions.'
+    display_message '3.  Quit System Settings (System Preferences).'
 
     printf '\n'
-  done
+    display_message 'Once you are done, return to this screen to continue.'
+
+    open "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension"
+
+    printf '\n'
+    read -s -k '?Press any key to continue.'
+  fi
 }
 
 main "$@"
