@@ -81,6 +81,52 @@ enable_account () {
   DISABLED_ACCOUNTS=("${(@)DISABLED_ACCOUNTS:#${1}}")
 }
 
+enable_do_not_disturb () {
+  # enable do not disturb for notifications under the following circumstances
+  #  + display is sleeping
+  #  + display is locked
+  #  + display is mirrored or shared
+
+  typeset dnd_prefs
+
+  # extract value of dnd_prefs key from user com.apple.ncprefs domain in xml format
+  dnd_prefs=$(plutil -extract dnd_prefs xml1 -o - /Users/$USER/Library/Preferences/com.apple.ncprefs.plist)
+
+  # extract base64 encoded string from the data key of value stored in the dnd_prefs key
+  dnd_prefs=$(echo $dnd_prefs | xmllint --xpath "string(//data)" -)
+
+  # decode the string and convert to xml format from binary plist format
+  dnd_prefs=$(echo $dnd_prefs | base64 --decode | plutil -convert xml1 - -o -)
+
+  # enable do not disturb for when display is sleeping
+  dnd_prefs=$(echo $dnd_prefs | plutil -replace dndDisplaySleep -bool YES - -o -)
+
+  # enable do not disturb for when display is locked
+  dnd_prefs=$(echo $dnd_prefs | plutil -replace dndDisplayLock -bool YES - -o -)
+
+  # enable do not disturb for when display is mirrored or shared
+  dnd_prefs=$(echo $dnd_prefs | plutil -replace dndMirrored -bool YES - -o -)
+
+  # convert updated plist from xml to binary plist format and then convert it to hex values
+  dnd_prefs=$(echo $dnd_prefs | plutil -convert binary1 - -o - | xxd -p | tr -d '\n')
+
+  # write updated information in raw binary data format to dnd_prefs key of com.apple.ncprefs domain
+  defaults write com.apple.ncprefs dnd_prefs -data "$dnd_prefs"
+
+  # restart processes to immediately implement changes
+  process_list=(
+    #cfprefsd
+    usernoted
+    #NotificationCenter
+  )
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" == "" ]] && continue
+    if [[ $(ps aux | grep "$line" | grep -v grep | awk '{print $2;}') != "" ]]; then
+      killall "$line" && sleep 0.1 && while [[ $(ps aux | grep "$line" | grep -v grep | awk '{print $2;}') == "" ]]; do sleep 0.5; done
+    fi
+  done <<< "$(printf "%s\n" "${process_list[@]}")"
+}
+
 enable_secure_token_for_account () {
   add_user_to_admin_group "$3"
   execute_sudo "sysadminctl" "-secureTokenOn" "$1" "-password" "$2" "-adminUser" "$3" "-adminPassword" "$4" 2>/dev/null
