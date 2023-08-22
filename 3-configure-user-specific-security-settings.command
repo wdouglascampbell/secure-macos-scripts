@@ -77,6 +77,12 @@ main () {
   ohai "Preventing creation of .DS_Store files."
   defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool yes
 
+  ohai "Disable Siri."
+  defaults write com.apple.Siri StatusMenuVisible -bool NO
+  defaults write com.apple.Siri VoiceTriggerUserEnabled -bool NO
+  defaults write com.apple.assistant.support "Assistant Enabled" -bool NO
+  launchctl unload /System/Library/LaunchAgents/com.apple.Siri.agent.plist
+
   # macOS 13 (Ventura) and later
   if [[ $true_os_version -ge 13 ]]; then
     display_message 'System Settings (System Preferences) will be opened.'
