@@ -128,10 +128,10 @@ main () {
 
   display_message 'System Settings (System Preferences) will be opened.'
   display_message 'Please perform the following manual steps.'
-  display_message '1.  Click the lock icon and enter your password.'
+  display_message '1.  Click the lock icon and enter your password. (macOS 12 Monterey only)'
   display_message '2.  Click the "System Services" Details button.'
-  display_message '3.  Move the slider for "Location-based alerts" to the off position. (macOS 12 Monterey and later)'
-  display_message '4.  Move the slider for "Location-based suggestions" to the off position.'
+  display_message '3.  Move the slider for "Location-based alerts" to the off position. (macOS 12 Monterey and macOS 13 Ventura)'
+  display_message '4.  Move the slider for "Location-based suggestions" to the off position. (macOS 12 Monterey and macOS 13 Ventura)'
   display_message '5.  Move the slider for "Significant Locations" to the off position.'
   display_message '6.  Move the slider for "Mac Analytics" to the off position. (macOS 13 Ventura and later)'
   display_message '7.  Click Done.'

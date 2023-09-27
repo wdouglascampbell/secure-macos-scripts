@@ -23,6 +23,10 @@ The **EXTREME** level of security ensures that encryption is active and that onl
 
 If FileVault has been enabled during the execution of the script you will be prompted to backup your recovery key.  **Do not skip this step!**
 
+#### Note for macOS 14 Sonoma Users
+
+On the initial release of macOS 14 Sonoma, it appears that a bug has been introduced to the user login screen. This has caused "Pre-Boot Authentication" to be displayed for the user name instead of the actual account being signed into. Rest assured it really is requesting the password for your user account and not the pre-boot password. The user account icon that is displayed is at least correct. Our hope is that Apple will fix this in a subsequent update.
+
 #### Running The Script
 
 1. Double-click the script ```1-ensure-secure-passwords-and-active-encryption.command```.
