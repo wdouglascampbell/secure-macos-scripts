@@ -96,6 +96,7 @@ quote_string_for_use_with_cyrus_imap_login_password () {
 #   4. Search string and replace all instances of } with \}
 #   5. Search string and replace all instances of ] with \]
 #   6. Search string and replace all instances of " with \"
+#   7. Search string and replace all instances of $ with \$
 # Arguments:
 #   String to be quoted
 #   Name of string to be derefenced for storing quoted string
@@ -107,6 +108,8 @@ quote_string_for_use_within_expect_tcl_script_double_quotes () {
   # ensure tcl/expect special characters { [ } ] are quoted
   # and " / should be quoted as well since they will be placed
   # within double quotes.
+  # finally $ should be quoted too since otherwise it may try
+  # to refer to a variable.
 
   string=${string//\\/\\\\}
   string=${string//\{/\\\{}
@@ -114,6 +117,7 @@ quote_string_for_use_within_expect_tcl_script_double_quotes () {
   string=${string//\}/\\\}}
   string=${string//\]/\\\]}
   string=${string//\"/\\\"}
+  string=${string//\$/\\\$}
 
   : ${(P)_string_quoted_for_expect::=$string}
 }
