@@ -48,6 +48,7 @@ main () {
     # add current user to FileVault (temporarily)
     enable_account "preboot"
     grant_account_filevault_access "$SCRIPT_USER" "${PASSWORDS[$SCRIPT_USER]}" "preboot" "${PASSWORDS[preboot]}"
+    enable_secure_token_for_account "$SCRIPT_USER" "${PASSWORDS[$SCRIPT_USER]}" "preboot" "${PASSWORDS[preboot]}"
     disable_account "preboot"
 
     display_message 'The Software Update preference pane in System Settings (System Preferences) needs to be opened to proceed with performing updates.'
