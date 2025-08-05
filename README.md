@@ -42,7 +42,7 @@ If FileVault was already enabled when you ran this script you will not have been
 
 We do not recommend storing recovery keys with Apple for security reasons.
 
-Instead you should run the utility script [```u4-generate-new-recovery-key.command```](#u4-generate-new-recovery-key.command) to generate a new recovery key and store it in a file for you to back up to a secure location (e.g. your company Google Drive).
+Instead you should run the utility script [```u4-generate-new-recovery-key.command```](#u4-generate-new-recovery-keycommand) to generate a new recovery key and store it in a file for you to back up to a secure location (e.g. your company Google Drive).
 ***
 
 ### ```2-configure-system-wide-security-settings.command```
