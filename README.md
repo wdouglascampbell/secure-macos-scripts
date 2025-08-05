@@ -35,6 +35,16 @@ On the initial release of macOS 14 Sonoma, it appears that a bug has been introd
 1. Follow the displayed instructions and respond to the questions and password requests.<br /><br />**Important: Do not skip backing up the recovery key file if prompted!**<br /><br />
 1. Once the script has finished, you will be ask if you want to reboot the computer. You are **strongly** encouraged to reboot the computer and go through the new sign in process while these changes are fresh in your mind.
 
+***
+**Important -- What should you do if no recovery key file was generated?**
+
+If FileVault was already enabled when you ran this script you will not have been prompted to back up a recovery key file. This most likely means that your recovery key is stored with Apple.
+
+We do not recommend storing recovery keys with Apple for security reasons.
+
+Instead you should run the utility script [```u4-generate-new-recovery-key.command```](#u4-generate-new-recovery-key.command) to generate a new recovery key and store it in a file for you to back up to a secure location (e.g. your company Google Drive).
+***
+
 ### ```2-configure-system-wide-security-settings.command```
 
 This script ensures that system-wide settings are set to values appropriate for keeping the computer secure.  Most of the changes can be automated but some require manual intervention.
@@ -103,3 +113,12 @@ This script is used to remove the Pre-Boot Authentication account from the compu
 1.  If you are prompted with a dialog asking for permission to allow "Terminal" access to the files in the folder containing the script, click OK.
 1.  Provide the requested passwords as prompted.
 1.  Once the script has finished, the Pre-Boot Authentication account will no longer exist.
+
+### ```u4-generate-new-recovery-key.command```
+
+This script is used to generate a new recovery key for FileVault and store it in a file in the script folder.
+
+1.  Double-click the script ```u4-generate-new-recovery-key.command```.
+1.  If you are prompted with a dialog asking for permission to allow "Terminal" access to the files in the folder containing the script, click OK.
+1.  Provide the requested passwords as prompted.
+1.  Once the script has finished, you will be prompted to store the file with the recovery key in a safe location (e.g. uploading to your company Google Drive).
