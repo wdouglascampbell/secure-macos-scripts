@@ -221,6 +221,46 @@ EOF
   fi
 }
 
+generate_new_filevault_recovery_key () {
+  local output
+  local password
+  local serial_num
+
+  quote_string_for_use_within_expect_tcl_script_double_quotes "$2" password
+
+  output=$(execute_sudo "expect" << EOF
+    #since we use expect inside a bash-script, we have to escape tcl-$.
+    set timeout 180
+    spawn fdesetup changerecovery --user $1 -personal
+    expect {
+      -re "Enter the password for (the )?user '$1':" {
+        send "$password\r"
+      }
+      default {
+        exit 2
+      }
+    }
+    expect {
+      "Error: User authentication failed." {
+        exit 1
+      }
+      "Please reboot to complete the process." {
+        exit 0
+      }
+    }
+    exit 0
+EOF
+  )
+
+  if [[ $? -eq 0 ]]; then
+    # retrieve and store recovery key
+    serial_num=$(ioreg -l | awk -F'"' '/IOPlatformSerialNumber/{print $4}')
+    echo "$output" | grep "New personal recovery key" | sed "s/New personal recovery key = '\(.*\)'/\1/" > "${SCRIPT_DIR}/${serial_num}_$(date +"%Y-%m-%d_%H:%M_%p")"
+  else  
+    abort "There was a problem generating a new FileVault personal recovery key."
+  fi  
+}
+
 get_account_with_filevault_permissions () {
   local _filevault_user=$1
   local _filevault_password=$2
