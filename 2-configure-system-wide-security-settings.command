@@ -54,6 +54,48 @@ main () {
   true_os_version_long=${osversionlong/#${osvers}/${true_os_version}}
   ohai "OS Version is $true_os_version_long"
   
+  if ! xcode-select -p &>/dev/null; then
+    ohai "Installing Command Line Tools…"
+
+    touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
+
+    CLT=$(softwareupdate -l 2>/dev/null | \
+      awk -F': ' '/Command Line Tools for Xcode/ {print $2; exit}')
+
+    if [[ -z "$CLT" ]]; then
+      echo "ERROR: Could not find Command Line Tools label"
+      exit 1
+    fi
+
+    execute_sudo "softwareupdate" "-i" "$CLT" "--verbose"
+
+    rm /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
+
+    ohai "\"Warming Up Swift\". This can take up to 2 minutes. Please wait..."
+    swift - <<'EOF' >/dev/null
+import Cocoa
+print("warming Cocoa...")
+EOF
+  fi
+
+  ohai "Checking whether Terminal has Full Disk Access"
+  local has_terminal_full_disk_access
+  local switch_state
+  [[ "$(execute_sudo systemsetup -getremotelogin 2>/dev/null)" == *On* ]] && switch_state="off" || switch_state="on"
+  [[ "$(execute_sudo systemsetup -f -setremotelogin $switch_state 2>&1)" == *"requires Full Disk Access privileges"* ]] &&
+    has_terminal_full_disk_access=0 || has_terminal_full_disk_access=1
+
+  if (( ! has_terminal_full_disk_access )); then
+    ohai "Terminal does not have Full Disk Access."
+    ohai "Displaying instructions for enabling Full Disk Access for Terminal."
+    open_system_settings "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+    # Note: there is often a timing issue and so in order to properly bring System Settings to
+    #       the foreground, it must be opened a second time.
+    open_system_settings "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+    /usr/bin/swift "${SCRIPT_DIR}/swift/instructions.swift" "${SCRIPT_DIR}/instructions/enable_fda_instructions.json"
+    osascript -e 'activate application "Terminal"'
+  fi
+
   ohai "Securing System-Wide Settings"
 
   # Configure Firewall
@@ -77,11 +119,16 @@ main () {
   execute_sudo "defaults" "write" "/Library/Preferences/SystemConfiguration/com.apple.smb.server" "AllowGuestAccess" "-bool" "NO"
   
   ohai "Disabling screen sharing."
-  execute_sudo "launchctl" "unload" "-w" "/System/Library/LaunchDaemons/com.apple.screensharing.plist" >/dev/null 2>&1
+  execute_sudo "launchctl" "disable" "system/com.apple.screensharing" >/dev/null 2>&1
   
-  ohai "Disabling file sharing."
-  execute_sudo "launchctl" "unload" "-w" "/System/Library/LaunchDaemons/com.apple.smbd.plist" >/dev/null 2>&1
-  
+  ohai "Stopping SMB daemon."
+  execute_sudo --no-abort "launchctl" "bootout" "system" "/System/Library/LaunchDaemons/com.apple.smbd.plist" >/dev/null 2>&1
+  execute_sudo "launchctl" "disable" "system/com.apple.smbd"
+
+  ohai "Disabling SMB in preferences."
+  execute_sudo "defaults" "write" "/Library/Preferences/com.apple.smb.server" "SharingEnabled" "-bool" "false" >/dev/null 2>&1
+  execute_sudo "defaults" "write" "/Library/Preferences/com.apple.sharingd.plist" "ServerServices" "-dict-add" "SMB" "-bool" "false" >/dev/null 2>&1
+
   # Disable NFS
   ohai "Disabling NFS."
   if [[ ! -f /etc/exports ]]; then
@@ -94,18 +141,22 @@ main () {
   
   ohai "Disabling Internet sharing."
   execute_sudo "defaults" "write" "/Library/Preferences/SystemConfiguration/com.apple.nat" "NAT" "-dict" "Enabled" "-int" "0" >/dev/null 2>&1
-  
+ 
   ohai "Disabling remote login."
-  execute_sudo "launchctl" "unload" "-w" "/System/Library/LaunchDaemons/ssh.plist" >/dev/null 2>&1
-  
+  execute_sudo "systemsetup" "-f" "-setremotelogin" "off" >/dev/null 2>&1
+
   ohai "Disabling remote management."
   execute_sudo "/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart" "-deactivate" "-stop" >/dev/null 2>&1
-  
+
   ohai "Disabling remote Apple events."
-  execute_sudo "launchctl" "unload" "-w" "/System/Library/LaunchDaemons/com.apple.eppc.plist" >/dev/null 2>&1
-  
+  execute_sudo --no-abort "systemsetup" "-setremoteappleevents" "off" >/dev/null 2>&1
+
+  # Restart sharingd to reload preferenes that have been changed
+  ohai "Restarting sharingd."
+  execute_sudo "killall" "sharingd"
+
   ohai "Disbling Touch ID for account unlock."
-  execute_sudo "bioutil" "-s" "-w" "-u" "0" >/dev/null 2>&1
+  execute_sudo --no-abort "bioutil" "-s" "-w" "-u" "0" >/dev/null 2>&1
 
   ohai "Enabling automatic check for software updates on macOS 11 and later."
   execute_sudo "defaults" "write" "/Library/Preferences/com.apple.SoftwareUpdate" "AutomaticCheckEnabled" "-bool" "yes"
@@ -126,42 +177,29 @@ main () {
   ohai "Disabling Mac Analytics."
   execute_sudo "defaults" "write" "/Library/Application Support/CrashReporter/DiagnosticMessagesHistory.plist" "AutoSubmit" "-int" "0"
 
-  display_message 'System Settings (System Preferences) will be opened.'
-  display_message 'Please perform the following manual steps.'
-  display_message '1.  Click the lock icon and enter your password. (macOS 12 Monterey only)'
-  display_message '2.  Click the "System Services" Details button.'
-  display_message '3.  Move the slider for "Location-based alerts" to the off position. (macOS 12 Monterey and macOS 13 Ventura)'
-  display_message '4.  Move the slider for "Location-based suggestions" to the off position. (macOS 12 Monterey and macOS 13 Ventura)'
-  display_message '5.  Move the slider for "Significant Locations" to the off position.'
-  display_message '6.  Move the slider for "Mac Analytics" to the off position. (macOS 13 Ventura and later)'
-  display_message '7.  Click Done.'
-  display_message '8.  Quit System Settings (System Preferences).'
-  printf '\n'
-  display_message 'Once you are done, return to this screen to continue.'
+  ohai "Update System Services Details Settings."
+  open_system_settings "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices"
+  /usr/bin/swift "${SCRIPT_DIR}/swift/instructions.swift" "${SCRIPT_DIR}/instructions/system_services_details.json"
 
-  open "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices"
+  # Note: This setting applies for all accounts so if any user signed in with an Apple ID changes it
+  #       the change will apply to all accounts.
+  ohai "Disable sharing iCloud Analytics."
+  open_system_settings "x-apple.systempreferences:com.apple.preference.security?"
+  /usr/bin/swift "${SCRIPT_DIR}/swift/instructions.swift" "${SCRIPT_DIR}/instructions/disable_sharing_of_information.json"
 
-  printf '\n'
-  read -s -k '?Press any key to continue.'
-
-  # macOS 13 (Ventura) and later
-  if [[ $true_os_version -ge 13 ]]; then
-    # Note: This setting applies for all accounts so if any user signed in with an Apple ID changes it
-    #       the change will apply to all accounts.
-    display_message 'System Settings (System Preferences) will be opened.'
-    display_message 'Please perform the following manual steps.'
-    display_message '1.  Click "Analytics & Improvements".'
-    display_message '2.  If a slider is present for "Share iCloud Analytics", move it to the off positions.'
-    display_message '3.  Quit System Settings (System Preferences).'
-
-    printf '\n'
-    display_message 'Once you are done, return to this screen to continue.'
-
-    open "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension"
-
-    printf '\n'
-    read -s -k '?Press any key to continue.'
+  if (( has_terminal_full_disk_access )); then
+    # display a warning about leaving Terminal with Full Disk Access
+    if /usr/bin/swift "${SCRIPT_DIR}/swift/fda_warning_prompt.swift"; then
+      open_system_settings "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+      /usr/bin/swift "${SCRIPT_DIR}/swift/instructions.swift" "${SCRIPT_DIR}/instructions/disable_fda_instructions.json"
+    fi
+  else
+    open_system_settings "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+    /usr/bin/swift "${SCRIPT_DIR}/swift/instructions.swift" "${SCRIPT_DIR}/instructions/disable_fda_instructions.json"
   fi
+
+  osascript -e 'tell application "System Settings" to quit'
+  osascript -e 'activate application "Terminal"'
 }
 
 main "$@"

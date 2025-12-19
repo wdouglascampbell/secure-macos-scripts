@@ -1,0 +1,26 @@
+{
+  "open": {
+    "type": "url",
+    "bundleIdentifier": "com.apple.SystemSettings",
+    "url": "x-apple.systempreferences:com.apple.Notifications-Settings.extension",
+    "activate": true
+  },
+  "first": "page1",
+  "pages": {
+    "page1": {
+      "title": "Restrict Displayed Notifications",
+      "items": [
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Move the slider for \"when display is sleeping\" to the off position." },
+            { "type": "text", "text": "Move the slider for \"when screen is locked\" to the off position." },
+            { "type": "text", "text": "Select \"Notifications Off\" for \"when mirroring or sharing display\"." },
+            { "type": "image", "path": "images/system-settings-suppress-notifications.png" }
+          ]
+        }
+      ],
+      "onFinish": "terminate"
+    }
+  }
+}

@@ -8,7 +8,7 @@ get_fullpath_to_logfile () {
   typeset -i prev_run_iteration
   typeset serial_num
 
-  serial_num=$(ioreg -l | awk -F'"' '/IOPlatformSerialNumber/{print $4}')
+  serial_num=$(get_serial_number)
   logfile_basename="$(date +"%Y-%m-%d")-${serial_num}-script-1--"
 
   # generate logfile name

@@ -214,7 +214,7 @@ EOF
 
   if [[ $? -eq 0 ]]; then
     # retrieve and store recovery key
-    serial_num=$(ioreg -l | awk -F'"' '/IOPlatformSerialNumber/{print $4}')
+    serial_num=$(get_serial_number)
     echo "$output" | grep "Recovery key" | sed "s/Recovery key = '\(.*\)'/\1/" > "${SCRIPT_DIR}/${serial_num}_$(date +"%Y-%m-%d_%H:%M_%p")"
   else
     abort "There was a problem enabling FileVault."
@@ -254,7 +254,7 @@ EOF
 
   if [[ $? -eq 0 ]]; then
     # retrieve and store recovery key
-    serial_num=$(ioreg -l | awk -F'"' '/IOPlatformSerialNumber/{print $4}')
+    serial_num=$(get_serial_number)
     echo "$output" | grep "New personal recovery key" | sed "s/New personal recovery key = '\(.*\)'/\1/" > "${SCRIPT_DIR}/${serial_num}_$(date +"%Y-%m-%d_%H:%M_%p")"
   else  
     abort "There was a problem generating a new FileVault personal recovery key."

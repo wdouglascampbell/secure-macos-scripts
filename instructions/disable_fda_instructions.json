@@ -1,0 +1,39 @@
+{
+  "open": {
+    "type": "url",
+    "bundleIdentifier": "com.apple.SystemSettings",
+    "url": "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
+    "activate": true
+  },
+  "first": "disableTerminal",
+  "pages": {
+    "disableTerminal": {
+      "title": "Disable Full Disk Access for Terminal",
+      "items": [
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Move the slider for \"Terminal\" to the Off position." },
+            { "type": "image", "path": "images/Terminal-list-item-disabled.png" }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "If prompted with one of the following dialogs, authenticate to confirm change." },
+            { "type": "images", "paths": ["images/authenticate-with-password-dialog.png","images/authenticate-with-fingerprint-dialog.png"], "scale": 0.75 }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Click \"Later\" in the dialog shown." },
+            { "type": "image", "path": "images/click-later-button.png", "scale": 0.75 }
+          ]
+        },
+        { "type": "text", "text": "Click OK below after disabling Terminal." }
+      ],
+      "onFinish": "terminate"
+    }
+  }
+}

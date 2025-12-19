@@ -1,0 +1,102 @@
+{
+  "open": {
+    "type": "url",
+    "bundleIdentifier": "com.apple.SystemSettings",
+    "url": "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
+    "activate": true
+  },
+  "first": "initialQuestion",
+  "pages": {
+    "terminalListed": {
+      "title": "Terminal is Listed",
+      "items": [
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Move the slider for \"Terminal\" to the On position." },
+            { "type": "image", "path": "images/Terminal-list-item-enabled.png" }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "If prompted with one of the following dialogs, authenticate to confirm change." },
+            { "type": "images", "paths": ["images/authenticate-with-password-dialog.png","images/authenticate-with-fingerprint-dialog.png"], "scale": 0.75 }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Click \"Later\" in the dialog shown." },
+            { "type": "image", "path": "images/click-later-button.png", "scale": 0.75 }
+          ]
+        }
+      ],
+      "onFinish": "terminate"
+    },
+    "terminalNotListed": {
+      "title": "Terminal is Not Listed",
+      "items": [
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Click the “+” button to add a new item to the list." },
+            { "type": "image", "path": "images/Terminal-item-in-Full-Disk-Access-list--click-plus.png" }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "If prompted with one of the following dialogs, authenticate to confirm change." },
+            { "type": "images", "paths": ["images/authenticate-with-password-dialog.png","images/authenticate-with-fingerprint-dialog.png"], "scale": 0.75 }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Click on “Applications”." },
+            { "type": "image", "path": "images/file-open-dialog-click-on-applications.png" }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Scroll until “Utilities” appears in the list and click “Utilities”." },
+            { "type": "image", "path": "images/file-open-dialog-click-on-utilities.png" }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Click on “Terminal”." }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Click “Open”." },
+            { "type": "image", "path": "images/file-open-dialog-select-terminal-and-open.png" }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Click \"Later\" in the dialog shown." },
+            { "type": "image", "path": "images/click-later-button.png", "scale": 0.75 }
+          ]
+        }
+      ],
+      "onFinish": "terminate"
+    },
+    "initialQuestion": {
+      "title": "Is Terminal listed in Full Disk Access?",
+      "items": [
+        { "type": "image", "path": "images/Terminal-item-in-Full-Disk-Access-list--circled.png" }
+      ],
+      "buttons": [
+        { "title": "Yes", "target": "terminalListed", "default": true },
+        { "title": "No", "target": "terminalNotListed", "default": false }
+      ]
+    }
+  }
+}

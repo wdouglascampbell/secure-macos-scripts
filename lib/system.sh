@@ -731,6 +731,10 @@ get_login_account_list () {
   LOGIN_ACCOUNTS=(${(@s: :)LOGIN_ACCOUNTS})
 }
 
+get_serial_number () {
+  ioreg -rd1 -c IOPlatformExpertDevice | awk -F'"' '/IOPlatformSerialNumber/{print $4}'
+}
+
 get_sudo () {
   # Invalidate sudo timestamp before exiting (if it wasn't active before).
   [[ -x /usr/bin/sudo ]] && ! /usr/bin/sudo -n -v 2>/dev/null
@@ -776,6 +780,17 @@ is_user_password_valid () {
 
   display_error "Password Invalid!"
   return 1
+}
+
+open_system_settings() {
+  local url="$1"
+
+  # Bring to foreground and reset root
+  open "x-apple.systempreferences:"
+  sleep 0.3
+
+  # Navigate to target
+  open "$url"
 }
 
 remove_account () {

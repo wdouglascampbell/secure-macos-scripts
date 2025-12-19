@@ -61,7 +61,7 @@ main () {
   fi
 
   printf '\n'
-  display_warning "A FileVault recovery key has been generatered and stored in the same folder as this script. The filename begins with this device's serial # "$(ioreg -l | awk -F'"' '/IOPlatformSerialNumber/{print $4}')"."
+  display_warning "A FileVault recovery key has been generatered and stored in the same folder as this script. The filename begins with this device's serial # "$(get_serial_number)"."
   printf '\n'
   display_message "Copy this file to a safe location (e.g. Google Drive) before proceeding."
 

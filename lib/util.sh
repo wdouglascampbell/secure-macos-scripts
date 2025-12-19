@@ -59,14 +59,34 @@ have_sudo_access () {
 }
 
 execute () {
-  if ! "$@"
-  then
-    abort "$(printf "Failed during: %s" "$(shell_join "$@")")"
+  local abort_on_fail=1
+
+  # check if first argument is --no-abort
+  if [[ "$1" == "--no-abort" ]]; then
+    abort_on_fail=0
+    shift
+  fi
+
+  if ! "$@"; then
+    if (( abort_on_fail )); then
+      abort "$(printf "Failed during: %s" "$(shell_join "$@")")"
+    else
+      # just return non-zero, but continue
+      return 1
+    fi
   fi
 }
 
 execute_sudo () {
   local -a args=("$@")
+  local abort_on_fail=1
+
+  if [[ "$1" == "--no-abort" ]]; then
+    abort_on_fail=0
+    shift
+    args=("$@")
+  fi
+
   if have_sudo_access
   then
     if [[ -n "${SUDO_ASKPASS-}" ]]
@@ -74,10 +94,10 @@ execute_sudo () {
       args=("-A" "${args[@]}")
     fi
     #ohai "/usr/bin/sudo" "${args[@]}"
-    execute "/usr/bin/sudo" "${args[@]}"
+    execute $( ((abort_on_fail)) && echo "" || echo "--no-abort" ) "/usr/bin/sudo" "${args[@]}"
   else
     #ohai "${args[@]}"
-    execute "${args[@]}"
+    execute $( ((abort_on_fail)) && echo "" || echo "--no-abort" ) "${args[@]}"
   fi
 }
 

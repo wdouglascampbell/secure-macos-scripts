@@ -1,0 +1,24 @@
+{
+  "open": {
+    "type": "url",
+    "bundleIdentifier": "com.apple.SystemSettings",
+    "url": "x-apple.systempreferences:com.apple.AirDrop-Handoff-Settings.extension",
+    "activate": true
+  },
+  "first": "page1",
+  "pages": {
+    "page1": {
+      "title": "Disable Air Drop by Default",
+      "items": [
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Select \"No One\" from the \"Air Drop\" drop-down list." },
+            { "type": "image", "path": "images/air-drop-setting.png" }
+          ]
+        },
+      ],
+      "onFinish": "terminate"
+    }
+  }
+}

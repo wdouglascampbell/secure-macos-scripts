@@ -1,0 +1,37 @@
+{
+  "open": {
+    "type": "url",
+    "bundleIdentifier": "com.apple.SystemSettings",
+    "url": "x-apple.systempreferences:com.apple.preference.security",
+    "activate": true
+  },
+  "first": "page1",
+  "pages": {
+    "page1": {
+      "title": "Open \"Analytics & Improvements\".",
+      "items": [
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Scroll through the list displayed and click on \"Analytics & Improvements\"." },
+            { "type": "image", "path": "images/privacy-security-item-list.png" }
+          ]
+        },
+      ],
+      "nextPage": "page2"
+    },
+    "page2": {
+      "title": "Disable Sharing of Information Per User",
+      "items": [
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Move slider for \"Improve Assistive Voice Features\" to the off position." },
+            { "type": "image", "path": "images/disable-improve-assitive-voice-features.png" }
+          ]
+        }
+      ],
+      "onFinish": "terminate"
+    }
+  }
+}

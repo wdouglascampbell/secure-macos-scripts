@@ -1,0 +1,57 @@
+{
+  "open": {
+    "type": "url",
+    "bundleIdentifier": "com.apple.SystemSettings",
+    "url": "x-apple.systempreferences:com.apple.preference.security?Privacy_LocationServices",
+    "activate": true
+  },
+  "first": "page1",
+  "pages": {
+    "page1": {
+      "title": "Open \"System Services\" Details.",
+      "items": [
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Click the \"System Services\" Details button."},
+            { "type": "image", "path": "images/system-services-detail-button.png" }
+          ]
+        },
+      ],
+      "nextPage": "systemServicesDetailsPage"
+    },
+    "systemServicesDetailsPage": {
+      "title": "Update \"System Services\" Details",
+      "items": [
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Move the slider for \"Significant locations & routes\" to the off position." },
+            { "type": "image", "path": "images/significant-locations-and-routes-item-disabled.png" }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "If prompted with one of the following dialogs, authenticate to confirm change." },
+            { "type": "images", "paths": ["images/authenticate-with-password-dialog.png","images/authenticate-with-fingerprint-dialog.png"], "scale": 0.75 }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Move the slider for \"Mac Analytics\" to the off position." },
+            { "type": "image", "path": "images/mac-analytics-item-disabled.png" }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Click Done." }
+          ]
+        }
+      ],
+      "onFinish": "terminate"
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "open": {
+    "type": "url",
+    "bundleIdentifier": "com.apple.SystemSettings",
+    "url": "x-apple.systempreferences:com.apple.preference",
+    "activate": true
+  },
+  "first": "page1",
+  "pages": {
+    "page1": {
+      "title": "Disable Siri",
+      "items": [
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Locate and click on either \"Apple Intelligence & Siri\" or \"Siri\" on the sidebar menu." },
+            { "type": "images", "paths": ["images/system-settings-sidebar-appleintelligencesiri.png","images/system-settings-sidebar-siri.png"] }
+          ]
+        },
+        {
+          "type": "list",
+          "items": [
+            { "type": "text", "text": "Move the slider for \"Siri\" to the off position." },
+            { "type": "image", "path": "images/disable-siri.png" }
+          ]
+        }
+      ],
+      "onFinish": "terminate"
+    }
+  }
+}
