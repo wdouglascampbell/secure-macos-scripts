@@ -191,7 +191,7 @@ encrypt_using_fdesetup_with_expect () {
   output=$(execute_sudo "expect" << EOF
     #since we use expect inside a bash-script, we have to escape tcl-$.
     set timeout 180
-    spawn fdesetup enable -user $1
+    spawn fdesetup enable -outputlist -user $1
     expect {
       -re "Enter the password for (the )?user '$1':" {
         send "$password\r"
@@ -215,7 +215,7 @@ EOF
   if [[ $? -eq 0 ]]; then
     # retrieve and store recovery key
     serial_num=$(get_serial_number)
-    echo "$output" | grep "Recovery key" | sed "s/Recovery key = '\(.*\)'/\1/" > "${SCRIPT_DIR}/${serial_num}_$(date +"%Y-%m-%d_%H:%M_%p")"
+    echo "$output" | tail -n +3 | plutil -extract RecoveryKey raw - > "${SCRIPT_DIR}/${serial_num}_$(date +"%Y-%m-%d_%H:%M_%p")"
   else
     abort "There was a problem enabling FileVault."
   fi
