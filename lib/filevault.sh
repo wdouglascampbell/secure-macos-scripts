@@ -215,7 +215,7 @@ EOF
   if [[ $? -eq 0 ]]; then
     # retrieve and store recovery key
     serial_num=$(get_serial_number)
-    echo "$output" | tail -n +3 | plutil -extract RecoveryKey raw - > "${SCRIPT_DIR}/${serial_num}_$(date +"%Y-%m-%d_%H:%M_%p")"
+    echo "$output" | sed -n '/<plist/,/<\/plist>/p' | plutil -extract RecoveryKey raw - > "${SCRIPT_DIR}/${serial_num}_$(date +"%Y-%m-%d_%H:%M_%p")"
   else
     abort "There was a problem enabling FileVault."
   fi
