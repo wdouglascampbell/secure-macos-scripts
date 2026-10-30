@@ -78,7 +78,7 @@ disable_filevault () {
     spawn fdesetup disable -user $1
     expect {
       -re "Enter the password for (the )?user '$1':" {
-        send "$password\r"
+        send -- "$password\r"
       }
       default {
         exit 3
@@ -143,7 +143,7 @@ enable_filevault_access_for_all_accounts () {
   ohai 'Enabling FileVault access for all accounts.'
 
   printf '\n'
-  display_message "If a dialog appears stating '"'"Terminal" would like to administer your computer. Administration can include modifying passwords, networking, and system settings.'"'. Please click 'OK'."
+  display_message "If a dialog appears stating '"'"Terminal" would like to administer your computer. Administration can include modifying passwords, networking, and system settings.'"'. Please click 'Allow'."
   printf '\n'
 
   for username in "${LOGIN_ACCOUNTS[@]}"
@@ -182,8 +182,10 @@ enable_filevault_extreme () {
 }
 
 encrypt_using_fdesetup_with_expect () {
+  local filevault_state
   local output
   local password
+  local recovery_key
   local serial_num
 
   quote_string_for_use_within_expect_tcl_script_double_quotes "$2" password
@@ -194,19 +196,21 @@ encrypt_using_fdesetup_with_expect () {
     spawn fdesetup enable -outputlist -user $1
     expect {
       -re "Enter the password for (the )?user '$1':" {
-        send "$password\r"
+        send -- "$password\r"
       }
       default {
         exit 2
       }
     }
+    # wait for fdesetup to finish so all of its output, including the
+    # recovery key, is captured. success is decided below by whether a
+    # recovery key was returned since the messages fdesetup prints vary
+    # between macOS versions.
     expect {
       "Error: User authentication failed." {
         exit 1
       }
-      "Please reboot to complete the process." {
-        exit 0
-      }
+      eof
     }
     exit 0
 EOF
@@ -214,8 +218,17 @@ EOF
 
   if [[ $? -eq 0 ]]; then
     # retrieve and store recovery key
+    recovery_key=$(echo "$output" | sed -n '/<plist/,/<\/plist>/p' | plutil -extract RecoveryKey raw - 2>/dev/null)
+    if [[ -z "$recovery_key" ]]; then
+      log_message "fdesetup output: $output"
+      get_filevault_state filevault_state
+      if [[ "$filevault_state" == "off" ]]; then
+        abort "There was a problem enabling FileVault."
+      fi
+      abort 'FileVault was enabled but the recovery key could not be saved. Run the u4-generate-new-filevault-recovery-key.command script to create a new one.'
+    fi
     serial_num=$(get_serial_number)
-    echo "$output" | sed -n '/<plist/,/<\/plist>/p' | plutil -extract RecoveryKey raw - > "${SCRIPT_DIR}/${serial_num}_$(date +"%Y-%m-%d_%H:%M_%p")"
+    printf '%s\n' "$recovery_key" > "${SCRIPT_DIR}/${serial_num}_$(date +"%Y-%m-%d_%H:%M_%p")"
   else
     abort "There was a problem enabling FileVault."
   fi
@@ -224,6 +237,7 @@ EOF
 generate_new_filevault_recovery_key () {
   local output
   local password
+  local recovery_key
   local serial_num
 
   quote_string_for_use_within_expect_tcl_script_double_quotes "$2" password
@@ -234,7 +248,7 @@ generate_new_filevault_recovery_key () {
     spawn fdesetup changerecovery --user $1 -personal
     expect {
       -re "Enter the password for (the )?user '$1':" {
-        send "$password\r"
+        send -- "$password\r"
       }
       default {
         exit 2
@@ -254,9 +268,14 @@ EOF
 
   if [[ $? -eq 0 ]]; then
     # retrieve and store recovery key
+    recovery_key=$(echo "$output" | grep "New personal recovery key" | sed "s/New personal recovery key = '\(.*\)'/\1/")
+    if [[ -z "$recovery_key" ]]; then
+      log_message "fdesetup output: $output"
+      abort "There was a problem generating a new FileVault personal recovery key."
+    fi
     serial_num=$(get_serial_number)
-    echo "$output" | grep "New personal recovery key" | sed "s/New personal recovery key = '\(.*\)'/\1/" > "${SCRIPT_DIR}/${serial_num}_$(date +"%Y-%m-%d_%H:%M_%p")"
-  else  
+    printf '%s\n' "$recovery_key" > "${SCRIPT_DIR}/${serial_num}_$(date +"%Y-%m-%d_%H:%M_%p")"
+  else
     abort "There was a problem generating a new FileVault personal recovery key."
   fi  
 }
@@ -323,16 +342,21 @@ grant_account_filevault_access () {
     spawn fdesetup add -usertoadd $1 -user $3
     expect {
       -re "Enter the password for user '$3':" {
-        send "$admin_password\r"
+        send -- "$admin_password\r"
       }
     }
     expect {
       "Enter the password for the added user '$1':" {
-        send "$preboot_password\r"
+        send -- "$preboot_password\r"
       }
     }
     expect eof
 EOF
+
+  # the expect script above does not report failure so check the result directly
+  if ! execute_sudo "fdesetup" "list" | grep -q "^$1,"; then
+    abort 'Unable to grant FileVault access to `'$1'` using `'$3'`.'
+  fi
 
   FILEVAULT_ENABLED_ACCOUNTS+=("$1")
 }

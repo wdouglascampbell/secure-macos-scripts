@@ -128,9 +128,61 @@ enable_do_not_disturb () {
 }
 
 enable_secure_token_for_account () {
+  local admin_password
+  local output
+  local user_password
+
+  quote_string_for_use_within_expect_tcl_script_double_quotes "$2" user_password
+  quote_string_for_use_within_expect_tcl_script_double_quotes "$4" admin_password
+
+  # passwords are given to sysadminctl at its prompts rather than as
+  # arguments since it reads an argument that begins with - as an option.
+  # sysadminctl asks for the admin password first and then the user password.
   add_user_to_admin_group "$3"
-  execute_sudo "sysadminctl" "-secureTokenOn" "$1" "-password" "$2" "-adminUser" "$3" "-adminPassword" "$4" 2>/dev/null
+  output=$(execute_sudo "expect" 2>&1 << EOF
+    set timeout 60
+    spawn sysadminctl -secureTokenOn $1 -password - -adminUser $3 -adminPassword -
+    expect {
+      "Enter password for * :" {
+        send -- "$admin_password\r"
+      }
+    }
+    expect {
+      "Enter password for * :" {
+        send -- "$user_password\r"
+      }
+    }
+    expect eof
+EOF
+  )
   (($ADMINS[(Ie)$3])) || remove_user_from_admin_group "$3"
+
+  # sysadminctl exits with 0 even when it fails so check the result directly
+  if ! is_account_secure_token_enabled "$1"; then
+    log_message "sysadminctl output: $output"
+    abort 'Unable to grant a secure token to `'$1'` using `'$3'`.'
+  fi
+}
+
+set_screen_lock_delay () {
+  local password
+
+  quote_string_for_use_within_expect_tcl_script_double_quotes "$3" password
+
+  # the password is given to sysadminctl at its prompts rather than as an
+  # argument since it reads an argument that begins with - as an option.
+  # the same password is used for both the admin and the user.
+  execute "expect" >/dev/null << EOF
+    set timeout 60
+    spawn sysadminctl -screenLock $1 -adminUser $2 -adminPassword - -password -
+    expect {
+      "Enter password for * :" {
+        send -- "$password\r"
+        exp_continue
+      }
+      eof
+    }
+EOF
 }
 
 enable_secure_token_for_all_accounts () {

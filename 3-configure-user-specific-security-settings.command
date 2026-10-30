@@ -82,7 +82,7 @@ EOF
   defaults -currentHost write com.apple.screensaver idleTime -int 600
 
   ohai "Requiring password to unlock once sleep or screensaver has been active for 5 seconds."
-  sysadminctl -screenLock 5 -adminUser "${SCRIPT_USER}" -adminPassword "${PASSWORDS[${SCRIPT_USER}]}" -password "${PASSWORDS[${SCRIPT_USER}]}"
+  set_screen_lock_delay 5 "${SCRIPT_USER}" "${PASSWORDS[${SCRIPT_USER}]}"
 
   ohai "Disabling notifications on lock screen, at sleep and while sharing/mirroring screen."
   # macOS 15 (Sequoia) and earlier

@@ -97,6 +97,9 @@ quote_string_for_use_with_cyrus_imap_login_password () {
 #   5. Search string and replace all instances of ] with \]
 #   6. Search string and replace all instances of " with \"
 #   7. Search string and replace all instances of $ with \$
+#   Note: When the quoted string is passed to expect's send command, use
+#         send -- "..." so a string that begins with - is not read as an
+#         option to send.
 # Arguments:
 #   String to be quoted
 #   Name of string to be derefenced for storing quoted string
